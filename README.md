@@ -1,30 +1,80 @@
 # MoonTrace
 
-**MoonTrace — A self-hosted media fetcher for Bilibili, YouTube, TikTok and more.**
+**简体中文** | [English](README.md)
 
-> Trace. Fetch. Archive.
+> **Follow the trace beyond the moon.**
 
-MoonTrace 是一个自托管媒体获取工具。目前 `v0.2` 已经完整支持 Bilibili，
-并同时提供 Web UI 与 Telegram Bot。未来计划逐步加入 YouTube、TikTok 等平台。
+MoonTrace 是一个自托管媒体获取工具。
 
-## 当前版本：v0.2
+目前主要支持 **Bilibili**，提供 Web UI 与 Telegram Bot 两种使用方式，并已经为后续加入 YouTube、TikTok 等平台预留了统一的平台适配层。
 
-已完成：
+当前版本：**v0.2.12**
 
-- Bilibili 链接 / BV 号解析
-- 视频 MP4 下载
-- M4A 音频
-- 封面
-- SRT 字幕
-- 浏览器登录态 / Cookie
+---
+
+## 当前支持
+
+### Bilibili
+
+目前已经实现：
+
+- Bilibili 视频链接 / BV 号解析
+- 多画质 MP4 下载
+- M4A 音频下载
+- 视频封面下载
+- SRT 字幕下载
+- 弹幕 XML 下载
+- 浏览器登录态读取
 - 自定义保存目录
-- 下载进度
-- FFmpeg 合并
+- 下载进度显示
+- FFmpeg 音视频合并
 - Web UI
 - Telegram Bot
 - Telegram 用户白名单
-- 一键启动脚本
-- 多平台架构基础
+- Windows 一键安装与启动脚本
+
+MoonTrace 目前只启用了 Bilibili 支持。
+
+计划中的平台：
+
+```text
+YouTube  → 计划加入
+TikTok   → 计划加入
+```
+
+---
+
+## v0.2.12
+
+这一版主要处理 FFmpeg 依赖。
+
+`setup.bat` 现在会自动检查 FFmpeg：
+
+```text
+项目内 FFmpeg
+      ↓
+系统 PATH 中的 FFmpeg
+      ↓
+都没有
+      ↓
+自动下载 FFmpeg
+```
+
+如果电脑本身没有 FFmpeg，安装脚本会自动下载到：
+
+```text
+tools/ffmpeg/bin/
+```
+
+MoonTrace 会优先使用项目目录中的 FFmpeg，同时也兼容已经配置到系统 `PATH` 的 FFmpeg。
+
+因此正常情况下不再需要用户手动安装 FFmpeg 或配置环境变量。
+
+完整版本记录见：
+
+[CHANGELOG.md](CHANGELOG.md)
+
+---
 
 ## 项目结构
 
@@ -32,15 +82,14 @@ MoonTrace 是一个自托管媒体获取工具。目前 `v0.2` 已经完整支�
 MoonTrace/
 ├─ app.py
 ├─ config.py
+├─ VERSION
+│
+├─ setup.bat
 ├─ start.bat
 ├─ start_bot.bat
 ├─ start_all.bat
-├─ setup.bat
 ├─ telegram_setup.bat
 ├─ requirements.txt
-├─ .gitignore
-├─ tools/
-│  └─ ffmpeg/             # setup.bat 自动生成，不提交到仓库
 │
 ├─ core/
 │  ├─ platforms.py
@@ -49,6 +98,7 @@ MoonTrace/
 │  ├─ subtitles.py
 │  ├─ thumbnail.py
 │  ├─ cookies.py
+│  ├─ ffmpeg.py
 │  └─ tasks.py
 │
 ├─ web/
@@ -59,14 +109,256 @@ MoonTrace/
 │  └─ configure.py
 │
 ├─ static/
-└─ downloads/
+│  ├─ index.html
+│  ├─ style.css
+│  ├─ app.js
+│  ├─ favicon.svg
+│  └─ images/
+│
+├─ downloads/
+│
+└─ tools/
+   └─ ffmpeg/        # setup.bat 自动生成，不提交到 Git
 ```
 
-## 为什么新增 `core/platforms.py`
+---
 
-MoonTrace 不再把自己定义为“Bilibili 下载器”。
+## 安装
 
-Web 与 Telegram 层只负责交互：
+MoonTrace 目前主要面向 Windows。
+
+建议使用：
+
+```text
+Python 3.10+
+```
+
+项目开发环境主要使用 Python 3.13。
+
+下载或 Clone 项目后，运行：
+
+```text
+setup.bat
+```
+
+安装脚本会自动：
+
+1. 检查 Python
+2. 创建或复用 `.venv`
+3. 安装 `requirements.txt` 中的 Python 依赖
+4. 检查 yt-dlp
+5. 检查 FFmpeg
+6. 必要时自动下载项目本地 FFmpeg
+
+已有 `.venv` 时不会自动删除原有虚拟环境。
+
+---
+
+## 启动 Web
+
+双击：
+
+```text
+start.bat
+```
+
+然后打开：
+
+```text
+http://127.0.0.1:8000
+```
+
+MoonTrace Web 可以直接完成：
+
+```text
+粘贴链接
+    ↓
+解析视频
+    ↓
+选择画质 / 音频 / 封面 / 字幕 / 弹幕
+    ↓
+下载
+```
+
+---
+
+## Telegram Bot
+
+MoonTrace 同时提供 Telegram Bot。
+
+首次使用前运行：
+
+```text
+telegram_setup.bat
+```
+
+需要配置：
+
+- Telegram Bot Token
+- 允许使用下载功能的 Telegram 用户 ID
+- Telegram 文件上传大小阈值
+
+配置完成后运行：
+
+```text
+start_bot.bat
+```
+
+如果希望同时启动 Web 与 Telegram Bot：
+
+```text
+start_all.bat
+```
+
+Telegram Bot 支持：
+
+- 发送 Bilibili 链接后自动解析
+- 选择视频画质
+- 下载 M4A 音频
+- 下载封面
+- 下载字幕
+- 下载弹幕 XML
+- 下载完成后发送到 Telegram
+- 文件发送成功后选择是否删除电脑中的本地副本
+
+---
+
+## Telegram 配置文件
+
+Telegram 配置保存在：
+
+```text
+.env
+```
+
+例如：
+
+```env
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_ALLOWED_USERS=
+TELEGRAM_MAX_UPLOAD_MB=49
+```
+
+`.env` 已加入 `.gitignore`。
+
+**不要把自己的 Bot Token 提交到 GitHub。**
+
+---
+
+## Bilibili 登录态
+
+部分 Bilibili 画质或内容需要登录后才能正常读取。
+
+MoonTrace 可以直接复用本机浏览器现有的登录状态，目前支持：
+
+```text
+Chrome
+Edge
+Firefox
+Brave
+```
+
+可以在 Web 页面中的：
+
+```text
+下载设置
+→ Bilibili 登录态
+```
+
+选择浏览器。
+
+MoonTrace 保存的只是：
+
+```text
+浏览器类型
+Profile 配置
+```
+
+不会把 Bilibili 密码保存进项目配置文件，也不会把浏览器 Cookie 内容导出到 `settings.json`。
+
+### Chrome / Edge Cookie 读取失败
+
+如果出现类似：
+
+```text
+Could not copy Chrome cookie database
+```
+
+通常是因为 Chrome 或 Edge 正在占用 Cookie 数据库。
+
+可以：
+
+```text
+完全退出浏览器后重新尝试
+```
+
+或者单独准备一个 Firefox 用于 MoonTrace。
+
+---
+
+## 画质
+
+MoonTrace 会尽量使用 Bilibili / yt-dlp 提供的实际画质档位，而不是简单地把视频像素高度当作画质名称。
+
+例如竖屏视频：
+
+```text
+996 × 1772
+```
+
+不会再错误显示成：
+
+```text
+1772P
+```
+
+而会优先显示类似：
+
+```text
+1080P
+996×1772 · 60 FPS
+```
+
+实际下载仍然按照真实媒体格式选择。
+
+---
+
+## 字幕与弹幕
+
+Bilibili 的弹幕和字幕在底层数据中可能同时出现在 subtitle 信息里。
+
+MoonTrace 会把两者分开处理：
+
+```text
+字幕
+├─ AI 中文
+├─ 简体中文
+├─ English
+└─ ...
+
+弹幕
+└─ XML
+```
+
+字幕可以保存为：
+
+```text
+.srt
+```
+
+弹幕保存为：
+
+```text
+.xml
+```
+
+---
+
+## 多平台架构
+
+MoonTrace 不希望长期只是一个写死 Bilibili 逻辑的下载器。
+
+目前的基本结构是：
 
 ```text
 Web / Telegram
@@ -78,334 +370,150 @@ Web / Telegram
 下载核心
 ```
 
-当前：
+平台检测集中在：
 
 ```text
-Bilibili → 已启用
-YouTube  → 计划加入
-TikTok   → 计划加入
+core/platforms.py
 ```
 
-以后加入新平台时，应优先扩展平台检测与适配层，而不是复制一整套 Web / Telegram 逻辑。
+因此以后增加新平台时，目标是继续扩展平台识别与适配层，而不是分别复制一整套 Web 和 Telegram 下载逻辑。
 
-## 启动
+---
 
-### Web
+## 保存目录
 
-双击：
+默认下载目录：
 
 ```text
-start.bat
+downloads/
 ```
 
-### Telegram Bot
-
-双击：
+Web UI 中可以修改默认保存位置，也可以启用：
 
 ```text
-start_bot.bat
+每次下载前询问保存位置
 ```
 
-### Web + Telegram
-
-双击：
+本地设置保存在：
 
 ```text
-start_all.bat
+settings.json
 ```
 
-## 首次安装 / 更新依赖
+该文件已经加入 `.gitignore`，不会提交到 GitHub。
 
-双击：
-
-```text
-setup.bat
-```
-
-安装脚本会自动完成：
-
-- 检查 Python；
-- 创建或复用 `.venv`；
-- 安装 / 更新 `requirements.txt` 中的依赖；
-- 检查 FFmpeg；
-- 电脑中没有 FFmpeg 时，自动下载到 `tools/ffmpeg/bin/`。
-
-已有 `.venv` 时不会删除现有环境。MoonTrace 会优先使用项目目录里的
-FFmpeg，也兼容已经加入系统 `PATH` 的 FFmpeg。无需手动设置环境变量。
-
-## Telegram 配置
-
-双击：
-
-```text
-telegram_setup.bat
-```
-
-配置：
-
-- Bot Token
-- 允许使用 Bot 的 Telegram 用户 ID
-- Telegram 上传安全阈值
-
-敏感配置保存在：
-
-```text
-.env
-```
-
-`.env` 已加入 `.gitignore`，不要提交到 GitHub。
-
-## Bilibili 登录态
-
-MoonTrace 会继续复用网页设置中的浏览器登录态，例如：
-
-```text
-Chrome
-Edge
-Firefox
-Brave
-```
-
-程序只保存浏览器/Profile 配置，不保存 Cookie 内容。
-
-如果 Chrome 正在占用 Cookie 数据库而出现：
-
-```text
-Could not copy Chrome cookie database
-```
-
-请完全退出 Chrome 后重试，或改用其他浏览器登录态。
+---
 
 ## Roadmap
 
 ```text
-v0.1  Bilibili 核心下载功能
-v0.2  Telegram Bot + MoonTrace 品牌重构
-v0.3  YouTube
-v0.4  TikTok
-v0.5  多平台自动识别与统一格式
-v1.0  正式多平台版本
+v0.1
+Bilibili 核心下载功能
+
+v0.2
+Telegram Bot
+MoonTrace 品牌重构
+Web UI 改进
+字幕 / 弹幕
+浏览器登录态
+FFmpeg 自动处理
+
+v0.3
+YouTube
+
+v0.4
+TikTok
+
+v0.5
+多平台自动识别与统一格式
+
+v1.0
+正式多平台版本
 ```
 
-## 项目名称
+Roadmap 只是目前的开发方向，具体版本安排可能会随着开发过程调整。
 
-**MoonTrace**
+---
 
-> Trace. Fetch. Archive.
+## 使用边界
 
+MoonTrace 主要用于：
 
-## v0.2.1
+- 保存自己上传或制作的内容
+- 保存已经获得授权的内容
+- 个人归档与研究
+- 其他你有权访问和使用的媒体
 
-修复 Windows 项目目录改名或移动后，`activate.bat` 仍保存旧虚拟环境路径，
-导致双击启动脚本没有正常启动的问题。
+MoonTrace 只使用当前用户或账号已经拥有的访问权限。
 
-现在所有 BAT 均直接调用：
+项目不提供用于绕过以下限制的功能：
 
 ```text
-.venv\Scripts\python.exe
+DRM
+付费墙
+会员权限
+购买验证
+其他访问控制
 ```
 
-不再依赖虚拟环境激活脚本，因此移动 `MoonTrace` 项目目录后更稳定。
+下载内容也不代表自动获得重新上传、传播或商业使用的权利。
 
+使用 MoonTrace 时，请自行遵守所在地法律、著作权规则以及对应平台的服务条款。
 
-## v0.2.2
+更完整的说明见：
 
-Fixed Windows CMD parsing issues caused by UTF-8 / Chinese text in batch files.
+[LEGAL.md](LEGAL.md)
 
-All `.bat` launchers are now written as ASCII with Windows CRLF line endings.
-This avoids mojibake and command corruption such as `cho`, `?echo`, or broken `if not exist`.
+---
 
+## 隐私与本地运行
 
-## v0.2.3 - Telegram 本地文件清理
+MoonTrace 是一个自托管项目。
 
-Telegram Bot 在成功把下载结果上传到 Telegram 后，会询问：
+Web 服务默认运行在：
 
 ```text
-是否保留运行 MoonTrace 的电脑上的本地副本？
-
-[💾 保留本地文件] [🗑 删除本地文件]
+127.0.0.1:8000
 ```
 
-选择“删除本地文件”后还会出现一次确认，防止误删。
+下载文件默认保存在本机。
 
-安全限制：
+项目不会要求把 Bilibili 密码提交到 MoonTrace，也不会把 `.env`、`settings.json` 或浏览器 Cookie 内容上传到仓库。
 
-- 只有成功上传到 Telegram 后才会出现清理选项。
-- 超过 Telegram 上传阈值、没有成功发送的文件不会自动询问删除。
-- 删除回调只能操作对应 Telegram 下载任务生成的文件。
-- 任务会记录 Telegram 用户 ID，其他用户无法通过回调删除该任务的文件。
-- 删除本地副本不会影响 Telegram 中已经发送成功的文件。
+---
 
+## 开发状态
 
-## v0.2.4 - 竖屏画质与弹幕修复
+MoonTrace 目前仍处于早期开发阶段。
 
-### 画质显示
+可能仍然存在：
 
-旧版本直接把视频的实际像素高度当成 `P`：
+- 特殊视频解析异常
+- Bilibili API / yt-dlp 更新导致兼容性变化
+- 特殊画质格式选择问题
+- Telegram 文件大小限制
+- Windows 环境差异导致的启动问题
+
+如果遇到问题，可以在 GitHub Issues 中提交复现信息。
+
+---
+
+## License
+
+MoonTrace 使用 MIT License。
+
+详见：
+
+[LICENSE](LICENSE)
+
+---
+
+## MoonTrace
+
+> **Follow the trace beyond the moon.**
+
+当前版本：
 
 ```text
-996 × 1772 -> 1772P
-498 × 886  -> 886P
+v0.2.12
 ```
-
-对于竖屏视频会产生错误的人类可读画质名称。
-
-v0.2.4 会优先读取 Bilibili / yt-dlp 的画质档位：
-
-```text
-1080P 60FPS
-720P 60FPS
-480P
-360P
-240P
-```
-
-同时 Web 界面仍会显示真实编码分辨率，例如：
-
-```text
-1080P
-996×1772 · 60 FPS
-```
-
-下载选择仍使用真实格式尺寸，因此不会因为只改显示名称而选错流。
-
-### 弹幕与字幕分离
-
-yt-dlp 的 Bilibili extractor 会把：
-
-```text
-danmaku
-```
-
-作为 XML 轨放在 `subtitles` 数据中。
-
-MoonTrace 现在会将它单独显示为：
-
-```text
-💬 弹幕 XML
-```
-
-真正的字幕（例如 `ai-zh`）则显示为：
-
-```text
-📝 AI 中文
-```
-
-Web 与 Telegram Bot 均已同步修复。
-
-
-## v0.2.5 - MoonTrace Visual Refresh
-
-Web UI visual redesign:
-
-- Uses the supplied Type-Moon-style sky image as the full-page background.
-- Adds a dark atmospheric overlay so text remains readable.
-- Glassmorphism hero, settings, result, login, and task panels.
-- Blue / violet MoonTrace accent gradient.
-- Redesigned input, download buttons, quality selectors, progress bars and badges.
-- Responsive mobile layout.
-- `prefers-reduced-motion` support.
-- Background image is stored locally at:
-
-```text
-static/images/moontrace-bg.jpg
-```
-
-No external image/CDN dependency is required.
-
-
-## v0.2.6 - Background quality and scroll performance
-
-- Replaced the compressed JPEG background with the user-supplied PNG image.
-- Background is no longer blurred.
-- Removed expensive live glass blur from the full page and large panels.
-- Removed fixed-background scrolling mode that caused repaint stutter.
-- Uses a dedicated fixed composited background layer instead.
-- Reduced large shadow and repaint costs.
-- Keeps the dark translucent MoonTrace visual style.
-
-Background file:
-
-```text
-static/images/moontrace-bg.png
-```
-
-
-## v0.2.7 - Background visibility fix
-
-Fixed a CSS stacking bug introduced in v0.2.6.
-
-The background image layer used a negative z-index and was rendered behind the body's own background color, making the image invisible.
-
-The fixed stack is now:
-
-```text
-background image layer  z-index: 0
-dark readability overlay z-index: 0
-MoonTrace content        z-index: 1
-```
-
-The overlay was also reduced slightly so the supplied PNG remains clearly visible.
-
-
-## v0.2.8 - Moonlit Sigil
-
-Added an original lunar / occult UI decoration layer while keeping the
-existing high-performance background implementation.
-
-Decorations include:
-
-- MoonTrace lunar sigil
-- geometric ring / circuit motifs
-- card corner ornaments
-- static star points
-- thin “magic circuit” dividers
-- serif section accents
-- `REMOTE MEDIA TRACE SYSTEM` technical label
-- `TRACE NETWORK / LOCAL ARCHIVE TERMINAL` footer label
-
-All decorations are CSS / inline SVG and remain lightweight.
-No real-time blur or large continuous animation was added.
-
-
-## v0.2.9 - Quick Start
-
-Added an in-page usage guide for first-time users.
-
-The guide explains:
-
-- how to parse Bilibili links / BV IDs
-- how to choose video, audio, cover, subtitle and danmaku downloads
-- why high-quality formats may be unavailable while logged out
-- how to use a logged-in browser session with MoonTrace
-- why a dedicated Firefox profile is a convenient option
-- that Web and Telegram share the same MoonTrace settings
-- that MoonTrace only uses permissions already available to the signed-in account
-
-The guide uses native HTML `<details>` / `<summary>`, so it requires no extra JavaScript.
-
-
-## v0.2.10 - Legal & Changelog
-
-MoonTrace now includes:
-
-- an in-page update log;
-- an in-page Responsible Use / copyright boundary section;
-- `CHANGELOG.md`;
-- `LEGAL.md`;
-- MIT `LICENSE`.
-
-### Responsible use
-
-MoonTrace is intended for personal archiving, research, and media that you own
-or are authorized to access. Users are responsible for following applicable
-copyright law and platform terms.
-
-MoonTrace does not provide features intended to bypass DRM, paywalls,
-membership restrictions, purchase checks, or other access controls.
-
-
-## v0.2.11
-
-- Rewrote the changelog in a more natural developer-log style.
-- Final cleanup before the first public GitHub upload.
