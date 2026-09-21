@@ -1,0 +1,568 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MoonTrace</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <main class="container">
+    <section class="hero ornamented">
+      <div class="brand-row">
+        <div class="logo"><span class="logo-mark">◐</span> MoonTrace</div>
+        <div class="brand-code">MT / 02.11</div>
+      </div>
+      <div class="moon-sigil" aria-hidden="true">
+        <svg viewBox="0 0 120 120" role="presentation">
+          <circle cx="60" cy="60" r="44" class="sigil-ring"/>
+          <circle cx="60" cy="60" r="31" class="sigil-ring sigil-ring-inner"/>
+          <path d="M60 12V28M60 92V108M12 60H28M92 60H108" class="sigil-line"/>
+          <path d="M29 29L40 40M80 80L91 91M91 29L80 40M40 80L29 91" class="sigil-line"/>
+          <path d="M73 34a30 30 0 1 0 0 52a24 24 0 1 1 0-52Z" class="sigil-moon"/>
+          <circle cx="60" cy="60" r="3" class="sigil-core"/>
+        </svg>
+      </div>
+      <div class="eyebrow">REMOTE MEDIA TRACE SYSTEM</div>
+      <h1>Follow the trace beyond the moon.</h1>
+      <div class="hero-rule"><span></span><b>MOONTRACE</b><span></span></div>
+      <p class="hero-description">自托管媒体获取工具。当前支持 Bilibili，未来将扩展 YouTube、TikTok 等平台。</p>
+
+      <form id="parseForm" class="search">
+        <input id="urlInput" type="text" autocomplete="off"
+               placeholder="粘贴媒体链接或 BV 号"
+               required>
+        <button id="parseButton" type="submit">解析</button>
+      </form>
+
+      <p id="status" class="status"></p>
+    </section>
+
+    
+    <details class="guide-card ornamented">
+      <summary class="guide-summary">
+        <div class="guide-summary-left">
+          <span class="guide-moon">☾</span>
+          <div>
+            <div class="guide-kicker">QUICK START</div>
+            <strong>MoonTrace 使用方法与 Bilibili 登录说明</strong>
+          </div>
+        </div>
+        <span class="guide-toggle" aria-hidden="true">＋</span>
+      </summary>
+
+      <div class="guide-body">
+        <div class="guide-grid">
+          <article class="guide-step">
+            <div class="guide-index">01 / TRACE</div>
+            <h3>粘贴并解析</h3>
+            <p>
+              将 Bilibili 视频链接或 BV 号粘贴到上方输入框，
+              点击「解析」。
+            </p>
+          </article>
+
+          <article class="guide-step">
+            <div class="guide-index">02 / SELECT</div>
+            <h3>选择内容</h3>
+            <p>
+              解析完成后，可选择视频画质、仅音频 M4A、
+              封面、字幕或弹幕 XML。
+            </p>
+          </article>
+
+          <article class="guide-step">
+            <div class="guide-index">03 / AUTHORIZATION</div>
+            <h3>需要更高画质？</h3>
+            <p>
+              未登录 Bilibili 时，部分高清画质可能不会出现。
+              请先在浏览器登录 Bilibili，然后在 MoonTrace 的
+              「下载设置 → Bilibili 登录态」中选择对应浏览器。
+            </p>
+          </article>
+
+          <article class="guide-step">
+            <div class="guide-index">04 / ARCHIVE</div>
+            <h3>下载并归档</h3>
+            <p>
+              选择需要的格式并开始下载。
+              Web 与 Telegram Bot 共用 MoonTrace 的下载设置。
+            </p>
+          </article>
+        </div>
+
+        <div class="hq-access">
+          <div class="hq-icon">◐</div>
+          <div class="hq-copy">
+            <div class="hq-kicker">HIGH QUALITY ACCESS</div>
+            <strong>如果只有低画质，先检查登录状态。</strong>
+            <p>
+              推荐使用一个单独的 Firefox 作为 MoonTrace 的 Bilibili 登录容器：
+              在 Firefox 登录 Bilibili，然后在下载设置里将浏览器选为 Firefox。
+            </p>
+          </div>
+        </div>
+
+        <div class="guide-notes">
+          <div class="guide-note">
+            <strong>浏览器 Cookie</strong>
+            <p>
+              MoonTrace 保存的是浏览器与配置文件选择，
+              不保存你的 Bilibili 密码或 Cookie 内容。
+            </p>
+          </div>
+
+          <div class="guide-note">
+            <strong>Chrome / Edge 提示</strong>
+            <p>
+              如果浏览器正在占用 Cookie 数据库，读取登录状态有时会失败。
+              关闭对应浏览器后再试，或直接使用专门的 Firefox。
+            </p>
+          </div>
+
+          <div class="guide-note">
+            <strong>权限边界</strong>
+            <p>
+              MoonTrace 只使用当前账号已经拥有的访问权限，
+              不会绕过会员、付费或其他访问限制。
+            </p>
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <section class="settings-card ornamented">
+      <div class="settings-title">
+        <div>
+          <strong>保存设置</strong>
+          <p>设置会保存到项目里的 settings.json。</p>
+        </div>
+      </div>
+
+      <div class="settings-grid">
+        <div class="field wide">
+          <label>默认保存位置</label>
+          <div class="path-row">
+            <input id="downloadDir" type="text" readonly>
+            <button id="chooseFolderButton" type="button">选择文件夹</button>
+          </div>
+        </div>
+
+        <label class="check-row">
+          <input id="askEachTime" type="checkbox">
+          <span>每次下载前询问保存位置</span>
+        </label>
+
+        <div class="field">
+          <label for="fragments">下载分片并发</label>
+          <select id="fragments">
+            <option value="1">1（保守）</option>
+            <option value="4">4（推荐）</option>
+            <option value="8">8（更激进）</option>
+          </select>
+        </div>
+
+        <div class="login-settings wide">
+          <div class="login-heading">
+            <div>
+              <strong>Bilibili 登录态</strong>
+              <p>直接读取你本机浏览器的登录 Cookie；不会导出或保存 Cookie 内容。</p>
+            </div>
+            <span id="cookieStatusBadge" class="cookie-badge">未启用</span>
+          </div>
+
+          <div class="login-grid">
+            <div class="field">
+              <label for="cookieBrowser">浏览器</label>
+              <select id="cookieBrowser">
+                <option value="none">不使用登录态</option>
+                <option value="chrome">Google Chrome</option>
+                <option value="edge">Microsoft Edge</option>
+                <option value="firefox">Mozilla Firefox</option>
+                <option value="brave">Brave</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="cookieProfile">Profile（可选）</label>
+              <input id="cookieProfile" type="text"
+                     placeholder="留空自动选择；或 Default / Profile 1">
+            </div>
+          </div>
+
+          <p class="login-tip">
+            先确保所选浏览器里已经登录 Bilibili。修改后重新解析视频即可。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="result" class="card hidden ornamented">
+      <img id="thumbnail" class="thumbnail" alt="视频封面">
+
+      <div class="info">
+        <div id="platformBadge" class="badge">Media</div>
+        <h2 id="title"></h2>
+
+        <p><strong>UP 主：</strong><span id="uploader"></span></p>
+        <p><strong>时长：</strong><span id="duration"></span></p>
+        <p><strong>视频 ID：</strong><span id="videoId"></span></p>
+
+        <a id="sourceLink" target="_blank" rel="noopener noreferrer">打开原视频</a>
+
+        <section class="tool-section">
+          <div class="section-title">
+            <h3>视频 MP4</h3>
+            <span id="qualityCount"></span>
+          </div>
+
+          <div id="qualities" class="qualities"></div>
+
+          <button id="videoButton" class="primary-action" type="button" disabled>
+            先选择画质
+          </button>
+        </section>
+
+        <section class="tool-section">
+          <div class="section-title">
+            <h3>仅音频</h3>
+            <span>M4A</span>
+          </div>
+          <p class="section-description">
+            优先使用 M4A 音频源；必要时由 FFmpeg 转换。
+          </p>
+          <button id="audioButton" class="secondary-action" type="button">
+            下载音频 M4A
+          </button>
+        </section>
+
+        <section class="tool-section">
+          <div class="section-title">
+            <h3>封面</h3>
+          </div>
+          <button id="coverButton" class="secondary-action" type="button">
+            下载原始封面
+          </button>
+        </section>
+
+        <section class="tool-section">
+          <div class="section-title">
+            <h3>字幕</h3>
+            <span id="subtitleCount"></span>
+          </div>
+
+          <div id="subtitleControls" class="subtitle-controls">
+            <select id="subtitleSelect"></select>
+            <button id="subtitleButton" class="secondary-action" type="button">
+              下载 SRT
+            </button>
+          </div>
+
+          <p id="subtitleEmpty" class="section-description hidden">
+            这个视频没有读取到可下载字幕。
+          </p>
+        </section>
+
+        <section id="danmakuSection" class="tool-section hidden">
+          <div class="section-title">
+            <h3>弹幕</h3>
+            <span>XML</span>
+          </div>
+
+          <p class="section-description">
+            保存 Bilibili 原始弹幕 XML，与字幕分开处理。
+          </p>
+
+          <button id="danmakuButton" class="secondary-action" type="button">
+            下载弹幕 XML
+          </button>
+        </section>
+
+        <section id="taskPanel" class="task-panel hidden">
+          <div class="task-header">
+            <strong id="taskTitle">任务</strong>
+            <span id="taskState">准备中</span>
+          </div>
+
+          <div id="videoProgressRow" class="progress-row hidden">
+            <div class="progress-label">
+              <span>视频</span><span id="videoProgressText">等待</span>
+            </div>
+            <div class="progress-track">
+              <div id="videoProgressBar" class="progress-bar"></div>
+            </div>
+          </div>
+
+          <div id="audioProgressRow" class="progress-row hidden">
+            <div class="progress-label">
+              <span>音频</span><span id="audioProgressText">等待</span>
+            </div>
+            <div class="progress-track">
+              <div id="audioProgressBar" class="progress-bar"></div>
+            </div>
+          </div>
+
+          <div id="singleProgressRow" class="progress-row hidden">
+            <div class="progress-label">
+              <span>进度</span><span id="singleProgressText">等待</span>
+            </div>
+            <div class="progress-track">
+              <div id="singleProgressBar" class="progress-bar"></div>
+            </div>
+          </div>
+
+          <p id="taskDetails" class="task-details"></p>
+
+          <div id="taskActions" class="task-actions hidden">
+            <button id="openFolderButton" type="button">在文件夹中显示</button>
+            <a id="fileLink">浏览器另存一份</a>
+          </div>
+        </section>
+      </div>
+    </section>
+
+
+    <details class="meta-card legal-card ornamented">
+      <summary class="meta-summary">
+        <div class="meta-summary-left">
+          <span class="meta-symbol">◇</span>
+          <div>
+            <div class="meta-kicker">RESPONSIBLE USE</div>
+            <strong>使用边界与版权说明</strong>
+          </div>
+        </div>
+        <span class="meta-toggle" aria-hidden="true">＋</span>
+      </summary>
+
+      <div class="meta-body">
+        <div class="legal-highlight">
+          <div class="legal-code">ACCESS / AUTHORIZATION</div>
+          <strong>MoonTrace 只使用你当前账号已经拥有的访问权限。</strong>
+          <p>
+            MoonTrace 不提供 DRM、付费墙、会员权限或其他访问控制的绕过功能。
+            如果某项内容或画质需要特定账号权限，MoonTrace 只会在该账号本身有权访问时使用它。
+          </p>
+        </div>
+
+        <div class="legal-grid">
+          <article>
+            <div class="legal-index">01 / OWNERSHIP</div>
+            <h3>优先处理你有权使用的内容</h3>
+            <p>
+              建议用于你自己上传的作品、已获作者授权的内容、
+              明确允许保存的内容，以及其他你合法拥有访问与使用权限的媒体。
+            </p>
+          </article>
+
+          <article>
+            <div class="legal-index">02 / PLATFORM</div>
+            <h3>同时遵守平台规则</h3>
+            <p>
+              使用 MoonTrace 时，仍需自行遵守所在地法律、
+              著作权规则以及对应平台的服务条款。
+            </p>
+          </article>
+
+          <article>
+            <div class="legal-index">03 / REDISTRIBUTION</div>
+            <h3>下载不等于可以重新传播</h3>
+            <p>
+              将他人的完整作品重新上传、公开传播、商用或批量搬运，
+              与个人保存是不同的行为，也可能带来更高的版权风险。
+            </p>
+          </article>
+
+          <article>
+            <div class="legal-index">04 / LOCAL FIRST</div>
+            <h3>本地、自托管、由用户控制</h3>
+            <p>
+              MoonTrace 默认在你的电脑上运行和保存文件。
+              浏览器登录态仅用于本机访问，不保存你的 Bilibili 密码。
+            </p>
+          </article>
+        </div>
+
+        <p class="legal-footnote">
+          本说明用于描述 MoonTrace 的设计边界，不构成针对任何具体情形的法律意见。
+        </p>
+      </div>
+    </details>
+
+    <details class="meta-card changelog-card ornamented">
+      <summary class="meta-summary">
+        <div class="meta-summary-left">
+          <span class="meta-symbol">☾</span>
+          <div>
+            <div class="meta-kicker">CHANGELOG</div>
+            <strong>MoonTrace 更新日志</strong>
+          </div>
+        </div>
+        <div class="changelog-current">CURRENT / v0.2.12</div>
+        <span class="meta-toggle" aria-hidden="true">＋</span>
+      </summary>
+
+      <div class="meta-body changelog-body">
+        <div class="timeline">
+          <article class="release release-current">
+            <div class="release-marker"></div>
+            <div class="release-head">
+              <strong>v0.2.12</strong>
+            </div>
+            <p>
+              - setup.bat 会检查 FFmpeg，缺少时自动下载到项目目录。<br>
+              - MoonTrace 会优先使用自己的 FFmpeg，不用再手动配置环境变量。<br>
+              - 启动和下载时也会检查，缺东西会直接告诉你怎么处理。
+            </p>
+          </article>
+
+          <article class="release">
+            <div class="release-marker"></div>
+            <div class="release-head">
+              <strong>v0.2.11</strong>
+            </div>
+            <p>
+              - 把更新日志重新写了一遍，少一点“发布说明”的味道。<br>
+              - 顺便整理了一下准备放到 GitHub 的文件。
+            </p>
+          </article>
+
+          <article class="release">
+            <div class="release-marker"></div>
+            <div class="release-head">
+              <strong>v0.2.10</strong>
+            </div>
+            <p>
+              - 网页里加了更新日志。<br>
+              - 补了版权和使用边界说明。<br>
+              - 仓库里加上 CHANGELOG、LEGAL 和 LICENSE。
+            </p>
+          </article>
+
+          <article class="release">
+            <div class="release-marker"></div>
+            <div class="release-head">
+              <strong>v0.2.9</strong>
+            </div>
+            <p>
+              - 加了一个使用方法。<br>
+              - 特别写了 Bilibili 高画质需要登录这件事。<br>
+              - 首页标语换成了 “Follow the trace beyond the moon.”
+            </p>
+          </article>
+
+          <article class="release">
+            <div class="release-marker"></div>
+            <div class="release-head">
+              <strong>v0.2.8</strong>
+            </div>
+            <p>
+              - 给网页加了点型月味的装饰。<br>
+              - 月亮、细线、边角这些。<br>
+              - 没加重动画，怕又卡。
+            </p>
+          </article>
+
+          <article class="release">
+            <div class="release-marker"></div>
+            <div class="release-head">
+              <strong>v0.2.7</strong>
+            </div>
+            <p>
+              - 修了背景图不显示。<br>
+              - 原因是 z-index 写错了，背景被压到页面后面去了。
+            </p>
+          </article>
+
+          <article class="release">
+            <div class="release-marker"></div>
+            <div class="release-head">
+              <strong>v0.2.6</strong>
+            </div>
+            <p>
+              - 上一版滚动太卡，把大面积毛玻璃砍了。<br>
+              - 背景换成原 PNG，不再压成 JPG。
+            </p>
+          </article>
+
+          <article class="release">
+            <div class="release-marker"></div>
+            <div class="release-head">
+              <strong>v0.2.5</strong>
+            </div>
+            <p>
+              - 第一次认真改网页外观。<br>
+              - 加了背景、半透明卡片和蓝紫色主题。
+            </p>
+          </article>
+
+          <article class="release">
+            <div class="release-marker"></div>
+            <div class="release-head">
+              <strong>v0.2.4</strong>
+            </div>
+            <p>
+              - 修复竖屏视频显示成 1772P 这种奇怪画质的问题。<br>
+              - 弹幕和字幕分开了。<br>
+              - 现在可以单独下载弹幕 XML。
+            </p>
+          </article>
+
+          <article class="release">
+            <div class="release-marker"></div>
+            <div class="release-head">
+              <strong>v0.2.3</strong>
+            </div>
+            <p>
+              - Telegram 发完文件后，可以选择要不要保留电脑里的副本。<br>
+              - 删除前加了二次确认，避免误删。
+            </p>
+          </article>
+
+          <article class="release">
+            <div class="release-marker"></div>
+            <div class="release-head">
+              <strong>v0.2.2</strong>
+            </div>
+            <p>
+              - Windows 的 BAT 之前被编码坑了一次。<br>
+              - 改成 ASCII + CRLF，并直接调用项目里的 Python。
+            </p>
+          </article>
+
+          <article class="release">
+            <div class="release-marker"></div>
+            <div class="release-head">
+              <strong>v0.2.1</strong>
+            </div>
+            <p>
+              - 继续修启动脚本。<br>
+              - 主要是让 Windows 下一键启动靠谱一点。
+            </p>
+          </article>
+
+          <article class="release">
+            <div class="release-marker"></div>
+            <div class="release-head">
+              <strong>v0.2.0</strong>
+            </div>
+            <p>
+              - 项目正式改名 MoonTrace。<br>
+              - Web 和 Telegram Bot 开始共用同一套核心和设置。<br>
+              - 顺便为以后接 YouTube、TikTok 留了平台层。
+            </p>
+          </article>
+        </div>
+      </div>
+    </details>
+
+    <footer>
+      <div class="footer-mark">☾</div>
+      <div>MoonTrace v0.2.12 · Bilibili / Web / Telegram</div>
+      <div class="footer-sub">TRACE NETWORK / LOCAL ARCHIVE TERMINAL</div>
+    </footer>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

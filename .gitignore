@@ -1,0 +1,8 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+settings.json
+downloads/*
+!downloads/.gitkeep
+tools/ffmpeg/
