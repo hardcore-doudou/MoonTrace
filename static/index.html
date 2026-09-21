@@ -242,7 +242,7 @@
             <h3>封面</h3>
           </div>
           <button id="coverButton" class="secondary-action" type="button">
-            下载 B站封面 1146×717
+            下载 B站封面
           </button>
         </section>
 
@@ -398,7 +398,7 @@
             <strong>MoonTrace 更新日志</strong>
           </div>
         </div>
-        <div class="changelog-current">CURRENT / v0.2.15</div>
+        <div class="changelog-current">CURRENT / v0.2.13</div>
         <span class="meta-toggle" aria-hidden="true">＋</span>
       </summary>
 
@@ -407,40 +407,16 @@
           <article class="release release-current">
             <div class="release-marker"></div>
             <div class="release-head">
-              <strong>v0.2.15</strong>
-            </div>
-            <p>
-              - 封面来源现在会优先检查 cover43，再退回普通 pic。<br>
-              - 下载时由 Bilibili 图片 CDN 直接输出 1146×717。<br>
-              - 不再把 307×173 这种卡片预览图当成最终封面。
-            </p>
-          </article>
-
-          <article class="release">
-            <div class="release-marker"></div>
-            <div class="release-head">
-              <strong>v0.2.14</strong>
-            </div>
-            <p>
-              - 封面现在优先从 Bilibili 官方视频信息接口读取 data.pic。<br>
-              - 目标是保存 B 站投稿封面原图，而不是页面里的缩略图。<br>
-              - 官方接口不可用时才退回 yt-dlp 的封面地址。
-            </p>
-          </article>
-
-          <article class="release">
-            <div class="release-marker"></div>
-            <div class="release-head">
               <strong>v0.2.13</strong>
             </div>
             <p>
-              - 修了 Bilibili 封面有时只拿到小图的问题。<br>
-              - 会优先挑更高分辨率的封面，并尝试去掉 CDN 缩放参数取原图。<br>
-              - 如果原图地址不可用，会自动退回原来的封面地址。
+              - 修正 Bilibili 封面下载逻辑。<br>
+              - 不再写死固定分辨率，也不再优先使用 4:3 的 cover43。<br>
+              - 优先读取普通投稿封面 pic，并去掉 CDN 缩放 / 裁剪参数后下载。
             </p>
           </article>
 
-          <article class="release">
+<article class="release">
             <div class="release-marker"></div>
             <div class="release-head">
               <strong>v0.2.12</strong>
@@ -594,7 +570,7 @@
 
     <footer>
       <div class="footer-mark">☾</div>
-      <div>MoonTrace v0.2.15 · Bilibili / Web / Telegram</div>
+      <div>MoonTrace v0.2.13 · Bilibili / Web / Telegram</div>
       <div class="footer-sub">TRACE NETWORK / LOCAL ARCHIVE TERMINAL</div>
     </footer>
   </main>

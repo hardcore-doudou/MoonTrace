@@ -8,7 +8,7 @@ MoonTrace is a self-hosted media fetching tool.
 
 It currently focuses on **Bilibili** and provides both a Web UI and a Telegram Bot. A unified platform adapter layer is already in place for future support of platforms such as YouTube, TikTok, and Douyin.
 
-Current version: **v0.2.15**
+Current version: **v0.2.13**
 
 ---
 
@@ -45,29 +45,15 @@ TikTok   → Planned
 
 ---
 
-## v0.2.15
-
-This release fixes Bilibili cover downloads that could still end up as small 307×173 card thumbnails.
-
-- Prefer Bilibili's `cover43` metadata when available, then fall back to `pic`.
-- Ask Bilibili's own image CDN to render the classic 1146×717 cover size.
-- Mark downloaded cover filenames with `1146x717` for easier verification.
-
-## v0.2.14
-
-This release changes Bilibili cover retrieval to prefer the official video-info API.
-
-- Read the submission cover from `data.pic` returned by Bilibili's video-info endpoint.
-- Remove CDN `@...` resize/crop suffixes before downloading when present.
-- Fall back to yt-dlp thumbnail metadata only when the official endpoint is unavailable.
-
 ## v0.2.13
 
-This release improves Bilibili thumbnail handling.
+This release fixes Bilibili cover downloads.
 
-- Prefer the largest thumbnail candidate reported by yt-dlp.
-- Remove Bilibili CDN `@...` resize/crop suffixes when possible to request the original image.
-- Fall back to the original yt-dlp thumbnail URL if the source image cannot be fetched.
+- Stop forcing a fixed cover resolution.
+- Do not prefer `cover43`, which may be a cropped 4:3 display variant.
+- Prefer the normal submission cover from Bilibili's `pic` field.
+- Strip CDN `@...` resize/crop suffixes before downloading.
+- Keep the dimensions Bilibili actually provides instead of labeling every cover with a fixed size.
 
 ## v0.2.12
 
@@ -542,5 +528,5 @@ See:
 Current version:
 
 ```text
-v0.2.15
+v0.2.13
 ```

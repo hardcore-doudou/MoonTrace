@@ -5,8 +5,6 @@ from urllib.request import Request, urlopen
 
 
 BVID_RE = re.compile(r"(BV[0-9A-Za-z]{10})", re.IGNORECASE)
-BILIBILI_COVER_WIDTH = 1146
-BILIBILI_COVER_HEIGHT = 717
 
 
 def validate_thumbnail_url(url: str) -> str:
@@ -30,25 +28,21 @@ def validate_thumbnail_url(url: str) -> str:
 
 
 def original_bilibili_thumbnail_url(url: str) -> str:
+    """
+    Return the underlying Bilibili BFS image without CDN resize/crop suffixes.
+
+    MoonTrace should keep the cover's real server-side dimensions instead of
+    forcing every video into a fixed canvas.
+    """
     safe_url = validate_thumbnail_url(url)
     parsed = urlparse(safe_url)
-
     path = parsed.path.split("@", 1)[0]
-    return parsed._replace(path=path, query="", fragment="").geturl()
 
-
-def bilibili_standard_cover_url(url: str) -> str:
-    """
-    Ask Bilibili's own image CDN for the classic 1146x717 cover canvas.
-
-    The source is first normalized to the underlying BFS image. Bilibili then
-    performs the resize/crop instead of MoonTrace resizing the downloaded file.
-    """
-    original = original_bilibili_thumbnail_url(url)
-    return (
-        f"{original}@{BILIBILI_COVER_WIDTH}w_"
-        f"{BILIBILI_COVER_HEIGHT}h_1e_1c.jpg"
-    )
+    return parsed._replace(
+        path=path,
+        query="",
+        fragment="",
+    ).geturl()
 
 
 def _extract_bvid(info: dict, source_url: str | None = None) -> str | None:
@@ -65,6 +59,7 @@ def _extract_bvid(info: dict, source_url: str | None = None) -> str | None:
             continue
 
         match = BVID_RE.search(value)
+
         if match:
             raw = match.group(1)
             return "BV" + raw[2:]
@@ -95,49 +90,20 @@ def _api_json(url: str, referer: str) -> dict | None:
         return None
 
 
-def get_bilibili_cover_source(
+def get_bilibili_standard_cover(
     info: dict,
     source_url: str | None = None,
 ) -> str | None:
     """
-    Prefer Bilibili's richer card metadata.
+    Compatibility name kept for existing callers.
 
-    Newer Bilibili metadata may expose a higher-resolution 4:3 cover in
-    cover43 while the ordinary page thumbnail can be a small 16:9 card image.
-    We therefore prefer cover43, then pic, before falling back to yt-dlp.
+    Return Bilibili's normal submission cover (pic), not cover43, and do not
+    force a fixed output resolution.
     """
     bvid = _extract_bvid(info, source_url)
 
     if bvid:
         referer = f"https://www.bilibili.com/video/{bvid}/"
-
-        cards_url = (
-            "https://api.bilibili.com/x/article/cards?"
-            + urlencode({"ids": bvid})
-        )
-        cards = _api_json(cards_url, referer)
-
-        if cards and cards.get("code") == 0:
-            data = cards.get("data") or {}
-
-            if isinstance(data, dict):
-                entries = [
-                    value for value in data.values()
-                    if isinstance(value, dict)
-                ]
-
-                for entry in entries:
-                    entry_bvid = str(entry.get("bvid") or "")
-                    if entry_bvid.lower() != bvid.lower():
-                        continue
-
-                    for key in ("cover43", "pic"):
-                        candidate = entry.get(key)
-                        if isinstance(candidate, str) and candidate:
-                            try:
-                                return original_bilibili_thumbnail_url(candidate)
-                            except ValueError:
-                                pass
 
         view_url = (
             "https://api.bilibili.com/x/web-interface/view?"
@@ -147,28 +113,15 @@ def get_bilibili_cover_source(
 
         if view and view.get("code") == 0:
             data = view.get("data") or {}
+            pic = data.get("pic")
 
-            for key in ("cover43", "pic"):
-                candidate = data.get(key)
-                if isinstance(candidate, str) and candidate:
-                    try:
-                        return original_bilibili_thumbnail_url(candidate)
-                    except ValueError:
-                        pass
+            if isinstance(pic, str) and pic:
+                try:
+                    return original_bilibili_thumbnail_url(pic)
+                except ValueError:
+                    pass
 
     return select_best_thumbnail(info)
-
-
-def get_bilibili_standard_cover(
-    info: dict,
-    source_url: str | None = None,
-) -> str | None:
-    source = get_bilibili_cover_source(info, source_url)
-
-    if not source:
-        return None
-
-    return bilibili_standard_cover_url(source)
 
 
 def _thumbnail_score(item: dict) -> tuple[int, int, float, int]:
@@ -256,10 +209,10 @@ def _suffix_from_response(content_type: str, url: str) -> str:
 
 
 def fetch_thumbnail(url: str) -> tuple[bytes, str, str]:
-    supplied_url = validate_thumbnail_url(url)
+    source_url = original_bilibili_thumbnail_url(url)
 
     request = Request(
-        supplied_url,
+        source_url,
         headers={
             "User-Agent": (
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -267,7 +220,10 @@ def fetch_thumbnail(url: str) -> tuple[bytes, str, str]:
                 "Chrome/130.0.0.0 Safari/537.36"
             ),
             "Referer": "https://www.bilibili.com/",
-            "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+            "Accept": (
+                "image/avif,image/webp,image/apng,image/svg+xml,"
+                "image/*,*/*;q=0.8"
+            ),
         },
     )
 
@@ -281,5 +237,5 @@ def fetch_thumbnail(url: str) -> tuple[bytes, str, str]:
     if not content:
         raise RuntimeError("封面响应为空")
 
-    suffix = _suffix_from_response(content_type, supplied_url)
+    suffix = _suffix_from_response(content_type, source_url)
     return content, content_type, suffix

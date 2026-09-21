@@ -229,7 +229,7 @@ def download_cover(task_id, url, output_dir):
 
     destination = unique_path(
         output_dir,
-        f"{title} [{video_id}] 封面 1146x717{suffix}",
+        f"{title} [{video_id}] 封面{suffix}",
     )
 
     destination.write_bytes(content)
