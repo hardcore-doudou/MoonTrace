@@ -308,7 +308,7 @@ function renderQualities(qualities) {
       });
 
       item.classList.add("selected");
-      selectedQuality = quality.height;
+      selectedQuality = quality;
       videoButton.disabled = false;
       videoButton.textContent = `下载 ${label} MP4`;
     });
@@ -430,7 +430,11 @@ async function startTask(kind, extra = {}) {
 
 videoButton.addEventListener("click", () => {
   if (!selectedQuality) return;
-  startTask("video", { height: selectedQuality });
+
+  startTask("video", {
+    height: selectedQuality.height,
+    quality_id: selectedQuality.quality_id ?? null
+  });
 });
 
 audioButton.addEventListener("click", () => startTask("audio"));

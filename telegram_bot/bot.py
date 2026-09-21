@@ -255,6 +255,12 @@ def build_media_keyboard(session_id: str, session: dict) -> InlineKeyboardMarkup
 
     for quality in qualities:
         height = int(quality["height"])
+        quality_id = quality.get("quality_id")
+        quality_token = (
+            int(quality_id)
+            if isinstance(quality_id, (int, float))
+            else 0
+        )
         label = str(quality.get("label") or f"{height}P")
 
         fps = quality.get("fps")
@@ -264,7 +270,7 @@ def build_media_keyboard(session_id: str, session: dict) -> InlineKeyboardMarkup
         quality_row.append(
             InlineKeyboardButton(
                 label,
-                callback_data=f"v:{session_id}:{height}",
+                callback_data=f"v:{session_id}:{height}:{quality_token}",
             )
         )
 
@@ -693,6 +699,7 @@ async def run_download_from_callback(
     session: dict,
     kind: str,
     height: int | None = None,
+    quality_id: int | None = None,
     subtitle_lang: str | None = None,
 ) -> None:
     async with DOWNLOAD_SEMAPHORE:
@@ -705,6 +712,7 @@ async def run_download_from_callback(
         task_id = create_task(
             kind=kind,
             height=height,
+            quality_id=quality_id,
             subtitle_lang=subtitle_lang,
             output_dir=str(output_dir),
             source="telegram",
@@ -723,6 +731,7 @@ async def run_download_from_callback(
                 session["url"],
                 kind,
                 height,
+                quality_id,
                 subtitle_lang,
                 output_dir,
                 fragments,
@@ -803,14 +812,20 @@ async def handle_callback(
         return
 
     try:
-        if action == "v" and len(parts) == 3:
+        if action == "v" and len(parts) in (3, 4):
             height = int(parts[2])
+
+            quality_id = None
+            if len(parts) == 4:
+                raw_quality_id = int(parts[3])
+                quality_id = raw_quality_id if raw_quality_id > 0 else None
 
             await run_download_from_callback(
                 query,
                 session,
                 kind="video",
                 height=height,
+                quality_id=quality_id,
             )
 
         elif action == "a":

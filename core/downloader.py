@@ -79,17 +79,32 @@ def make_progress_hook(task_id: str):
     return hook
 
 
-def download_video(task_id, url, height, output_dir, fragments):
+def download_video(
+    task_id,
+    url,
+    height,
+    quality_id,
+    output_dir,
+    fragments,
+):
     temp_template = str(output_dir / f"{task_id}.%(ext)s")
+
+    if quality_id is not None:
+        format_selector = (
+            f"bestvideo[quality={quality_id}]+bestaudio/"
+            f"best[quality={quality_id}]"
+        )
+    else:
+        format_selector = (
+            f"bestvideo[height<={height}]+bestaudio/"
+            f"best[height<={height}]"
+        )
 
     options = {
         "quiet": True,
         "no_warnings": True,
         "noplaylist": True,
-        "format": (
-            f"bestvideo[height<={height}]+bestaudio/"
-            f"best[height<={height}]"
-        ),
+        "format": format_selector,
         "outtmpl": temp_template,
         "merge_output_format": "mp4",
         "windowsfilenames": True,
@@ -120,14 +135,27 @@ def download_video(task_id, url, height, output_dir, fragments):
     title = safe_filename(info.get("title") or info.get("id") or "video")
     video_id = info.get("id") or "video"
 
-    selected_quality = next(
-        (
-            quality
-            for quality in get_available_qualities(info)
-            if quality.get("height") == height
-        ),
-        None,
-    )
+    selected_quality = None
+
+    if quality_id is not None:
+        selected_quality = next(
+            (
+                quality
+                for quality in get_available_qualities(info)
+                if quality.get("quality_id") == quality_id
+            ),
+            None,
+        )
+
+    if selected_quality is None:
+        selected_quality = next(
+            (
+                quality
+                for quality in get_available_qualities(info)
+                if quality.get("height") == height
+            ),
+            None,
+        )
     quality_label = (
         selected_quality.get("label")
         if selected_quality
@@ -250,6 +278,7 @@ def download_worker(
     url,
     kind,
     height,
+    quality_id,
     subtitle_lang,
     output_dir,
     fragments,
@@ -265,6 +294,7 @@ def download_worker(
                 task_id,
                 url,
                 height,
+                quality_id,
                 output_dir,
                 fragments,
             )

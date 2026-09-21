@@ -47,6 +47,7 @@ TikTok   → Planned
 
 ## v0.2.13
 
+- Web and Telegram now pass Bilibili `quality_id` when selecting video quality, so tiers such as 1080P and 1080P+ are distinguished even when they share the same resolution.
 This release fixes Bilibili cover downloads.
 
 - Stop forcing a fixed cover resolution.

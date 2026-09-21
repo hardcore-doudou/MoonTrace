@@ -42,6 +42,7 @@ class DownloadRequest(BaseModel):
     url: str
     kind: str
     height: int | None = None
+    quality_id: int | None = None
     subtitle_lang: str | None = None
     output_dir: str | None = None
     concurrent_fragments: int = 4
@@ -247,6 +248,18 @@ def start_download(
                 detail="无效的视频画质",
             )
 
+        if (
+            data.quality_id is not None
+            and (
+                data.quality_id <= 0
+                or data.quality_id > 1000
+            )
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="无效的 Bilibili 画质 ID",
+            )
+
     if data.concurrent_fragments not in (1, 4, 8):
         raise HTTPException(
             status_code=400,
@@ -265,6 +278,7 @@ def start_download(
     task_id = create_task(
         kind=data.kind,
         height=data.height,
+        quality_id=data.quality_id,
         subtitle_lang=data.subtitle_lang,
         output_dir=str(output_dir),
     )
@@ -275,6 +289,7 @@ def start_download(
         url,
         data.kind,
         data.height,
+        data.quality_id,
         data.subtitle_lang,
         output_dir,
         data.concurrent_fragments,
