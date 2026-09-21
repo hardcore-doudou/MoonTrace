@@ -242,7 +242,7 @@
             <h3>封面</h3>
           </div>
           <button id="coverButton" class="secondary-action" type="button">
-            下载原始封面
+            下载 B站封面 1146×717
           </button>
         </section>
 
@@ -398,13 +398,25 @@
             <strong>MoonTrace 更新日志</strong>
           </div>
         </div>
-        <div class="changelog-current">CURRENT / v0.2.14</div>
+        <div class="changelog-current">CURRENT / v0.2.15</div>
         <span class="meta-toggle" aria-hidden="true">＋</span>
       </summary>
 
       <div class="meta-body changelog-body">
         <div class="timeline">
           <article class="release release-current">
+            <div class="release-marker"></div>
+            <div class="release-head">
+              <strong>v0.2.15</strong>
+            </div>
+            <p>
+              - 封面来源现在会优先检查 cover43，再退回普通 pic。<br>
+              - 下载时由 Bilibili 图片 CDN 直接输出 1146×717。<br>
+              - 不再把 307×173 这种卡片预览图当成最终封面。
+            </p>
+          </article>
+
+          <article class="release">
             <div class="release-marker"></div>
             <div class="release-head">
               <strong>v0.2.14</strong>
@@ -582,7 +594,7 @@
 
     <footer>
       <div class="footer-mark">☾</div>
-      <div>MoonTrace v0.2.14 · Bilibili / Web / Telegram</div>
+      <div>MoonTrace v0.2.15 · Bilibili / Web / Telegram</div>
       <div class="footer-sub">TRACE NETWORK / LOCAL ARCHIVE TERMINAL</div>
     </footer>
   </main>

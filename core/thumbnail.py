@@ -5,6 +5,8 @@ from urllib.request import Request, urlopen
 
 
 BVID_RE = re.compile(r"(BV[0-9A-Za-z]{10})", re.IGNORECASE)
+BILIBILI_COVER_WIDTH = 1146
+BILIBILI_COVER_HEIGHT = 717
 
 
 def validate_thumbnail_url(url: str) -> str:
@@ -28,20 +30,25 @@ def validate_thumbnail_url(url: str) -> str:
 
 
 def original_bilibili_thumbnail_url(url: str) -> str:
-    """
-    Bilibili CDN image URLs may append resize/crop instructions after "@",
-    for example: cover.jpg@672w_378h_1c.webp.
-
-    Removing that suffix asks the CDN for the original stored image.
-    """
     safe_url = validate_thumbnail_url(url)
     parsed = urlparse(safe_url)
 
-    if "@" not in parsed.path:
-        return safe_url
+    path = parsed.path.split("@", 1)[0]
+    return parsed._replace(path=path, query="", fragment="").geturl()
 
-    original_path = parsed.path.split("@", 1)[0]
-    return parsed._replace(path=original_path).geturl()
+
+def bilibili_standard_cover_url(url: str) -> str:
+    """
+    Ask Bilibili's own image CDN for the classic 1146x717 cover canvas.
+
+    The source is first normalized to the underlying BFS image. Bilibili then
+    performs the resize/crop instead of MoonTrace resizing the downloaded file.
+    """
+    original = original_bilibili_thumbnail_url(url)
+    return (
+        f"{original}@{BILIBILI_COVER_WIDTH}w_"
+        f"{BILIBILI_COVER_HEIGHT}h_1e_1c.jpg"
+    )
 
 
 def _extract_bvid(info: dict, source_url: str | None = None) -> str | None:
@@ -65,56 +72,103 @@ def _extract_bvid(info: dict, source_url: str | None = None) -> str | None:
     return None
 
 
-def get_official_bilibili_thumbnail(
+def _api_json(url: str, referer: str) -> dict | None:
+    request = Request(
+        url,
+        headers={
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/130.0.0.0 Safari/537.36"
+            ),
+            "Referer": referer,
+            "Accept": "application/json, text/plain, */*",
+        },
+    )
+
+    try:
+        with urlopen(request, timeout=15) as upstream:
+            return json.loads(
+                upstream.read().decode("utf-8", errors="replace")
+            )
+    except Exception:
+        return None
+
+
+def get_bilibili_cover_source(
     info: dict,
     source_url: str | None = None,
 ) -> str | None:
     """
-    Get the actual Bilibili submission cover from the official video-info API.
+    Prefer Bilibili's richer card metadata.
 
-    The x/web-interface/view endpoint exposes data.pic, which is the video's
-    cover image rather than a page-sized preview thumbnail. If the API cannot
-    be reached, fall back to the thumbnail metadata provided by yt-dlp.
+    Newer Bilibili metadata may expose a higher-resolution 4:3 cover in
+    cover43 while the ordinary page thumbnail can be a small 16:9 card image.
+    We therefore prefer cover43, then pic, before falling back to yt-dlp.
     """
     bvid = _extract_bvid(info, source_url)
 
     if bvid:
-        api_url = (
+        referer = f"https://www.bilibili.com/video/{bvid}/"
+
+        cards_url = (
+            "https://api.bilibili.com/x/article/cards?"
+            + urlencode({"ids": bvid})
+        )
+        cards = _api_json(cards_url, referer)
+
+        if cards and cards.get("code") == 0:
+            data = cards.get("data") or {}
+
+            if isinstance(data, dict):
+                entries = [
+                    value for value in data.values()
+                    if isinstance(value, dict)
+                ]
+
+                for entry in entries:
+                    entry_bvid = str(entry.get("bvid") or "")
+                    if entry_bvid.lower() != bvid.lower():
+                        continue
+
+                    for key in ("cover43", "pic"):
+                        candidate = entry.get(key)
+                        if isinstance(candidate, str) and candidate:
+                            try:
+                                return original_bilibili_thumbnail_url(candidate)
+                            except ValueError:
+                                pass
+
+        view_url = (
             "https://api.bilibili.com/x/web-interface/view?"
             + urlencode({"bvid": bvid})
         )
+        view = _api_json(view_url, referer)
 
-        request = Request(
-            api_url,
-            headers={
-                "User-Agent": (
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                    "AppleWebKit/537.36 Chrome/130 Safari/537.36"
-                ),
-                "Referer": f"https://www.bilibili.com/video/{bvid}/",
-                "Accept": "application/json, text/plain, */*",
-            },
-        )
+        if view and view.get("code") == 0:
+            data = view.get("data") or {}
 
-        try:
-            with urlopen(request, timeout=15) as upstream:
-                payload = json.loads(
-                    upstream.read().decode("utf-8", errors="replace")
-                )
-
-            if payload.get("code") == 0:
-                data = payload.get("data") or {}
-                pic = data.get("pic")
-
-                if isinstance(pic, str) and pic:
-                    return original_bilibili_thumbnail_url(pic)
-
-        except Exception:
-            # Keep cover downloads usable if the API is temporarily blocked,
-            # rate-limited or unavailable.
-            pass
+            for key in ("cover43", "pic"):
+                candidate = data.get(key)
+                if isinstance(candidate, str) and candidate:
+                    try:
+                        return original_bilibili_thumbnail_url(candidate)
+                    except ValueError:
+                        pass
 
     return select_best_thumbnail(info)
+
+
+def get_bilibili_standard_cover(
+    info: dict,
+    source_url: str | None = None,
+) -> str | None:
+    source = get_bilibili_cover_source(info, source_url)
+
+    if not source:
+        return None
+
+    return bilibili_standard_cover_url(source)
 
 
 def _thumbnail_score(item: dict) -> tuple[int, int, float, int]:
@@ -141,10 +195,6 @@ def _thumbnail_score(item: dict) -> tuple[int, int, float, int]:
 
 
 def select_best_thumbnail(info: dict) -> str | None:
-    """
-    Fallback thumbnail selection for cases where the Bilibili API cannot be
-    used. Prefer the largest candidate exposed by yt-dlp.
-    """
     candidates: list[tuple[tuple[int, int, float, int], str]] = []
     seen: set[str] = set()
 
@@ -207,43 +257,29 @@ def _suffix_from_response(content_type: str, url: str) -> str:
 
 def fetch_thumbnail(url: str) -> tuple[bytes, str, str]:
     supplied_url = validate_thumbnail_url(url)
-    original_url = original_bilibili_thumbnail_url(supplied_url)
 
-    # Prefer the original CDN image. If Bilibili refuses that URL for a
-    # particular item, fall back to the exact URL supplied to us.
-    urls = [original_url]
-    if supplied_url != original_url:
-        urls.append(supplied_url)
+    request = Request(
+        supplied_url,
+        headers={
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/130.0.0.0 Safari/537.36"
+            ),
+            "Referer": "https://www.bilibili.com/",
+            "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+        },
+    )
 
-    last_error: Exception | None = None
+    with urlopen(request, timeout=20) as upstream:
+        content = upstream.read()
+        content_type = upstream.headers.get(
+            "Content-Type",
+            "image/jpeg",
+        ).lower()
 
-    for candidate in urls:
-        request = Request(
-            candidate,
-            headers={
-                "User-Agent": (
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                    "AppleWebKit/537.36 Chrome/130 Safari/537.36"
-                ),
-                "Referer": "https://www.bilibili.com/",
-            },
-        )
+    if not content:
+        raise RuntimeError("封面响应为空")
 
-        try:
-            with urlopen(request, timeout=20) as upstream:
-                content = upstream.read()
-                content_type = upstream.headers.get(
-                    "Content-Type",
-                    "image/jpeg",
-                ).lower()
-
-            if not content:
-                raise RuntimeError("封面响应为空")
-
-            suffix = _suffix_from_response(content_type, candidate)
-            return content, content_type, suffix
-
-        except Exception as exc:
-            last_error = exc
-
-    raise RuntimeError(f"封面获取失败：{last_error}")
+    suffix = _suffix_from_response(content_type, supplied_url)
+    return content, content_type, suffix

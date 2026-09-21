@@ -11,7 +11,7 @@ from core.parser import (
 )
 from core.subtitles import download_danmaku, download_subtitle
 from core.tasks import update_task
-from core.thumbnail import fetch_thumbnail, get_official_bilibili_thumbnail
+from core.thumbnail import fetch_thumbnail, get_bilibili_standard_cover
 
 
 def classify_stream(data: dict) -> str:
@@ -217,7 +217,7 @@ def download_cover(task_id, url, output_dir):
     update_task(task_id, status="processing")
 
     info = extract_media_info(url)
-    thumbnail = get_official_bilibili_thumbnail(info, url)
+    thumbnail = get_bilibili_standard_cover(info, url)
 
     if not thumbnail:
         raise RuntimeError("这个视频没有可用封面")
@@ -229,7 +229,7 @@ def download_cover(task_id, url, output_dir):
 
     destination = unique_path(
         output_dir,
-        f"{title} [{video_id}] 封面{suffix}",
+        f"{title} [{video_id}] 封面 1146x717{suffix}",
     )
 
     destination.write_bytes(content)
