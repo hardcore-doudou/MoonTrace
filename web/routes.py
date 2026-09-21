@@ -28,7 +28,7 @@ from core.parser import (
 )
 from core.platforms import detect_platform
 from core.tasks import create_task, get_task
-from core.thumbnail import fetch_thumbnail
+from core.thumbnail import fetch_thumbnail, select_best_thumbnail
 
 
 router = APIRouter()
@@ -187,7 +187,7 @@ def parse_video(data: ParseRequest):
             detail=f"解析失败：{exc}",
         ) from exc
 
-    thumbnail = info.get("thumbnail")
+    thumbnail = select_best_thumbnail(info)
     platform = detect_platform(url)
 
     return {

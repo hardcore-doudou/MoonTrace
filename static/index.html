@@ -398,13 +398,25 @@
             <strong>MoonTrace 更新日志</strong>
           </div>
         </div>
-        <div class="changelog-current">CURRENT / v0.2.12</div>
+        <div class="changelog-current">CURRENT / v0.2.13</div>
         <span class="meta-toggle" aria-hidden="true">＋</span>
       </summary>
 
       <div class="meta-body changelog-body">
         <div class="timeline">
           <article class="release release-current">
+            <div class="release-marker"></div>
+            <div class="release-head">
+              <strong>v0.2.13</strong>
+            </div>
+            <p>
+              - 修了 Bilibili 封面有时只拿到小图的问题。<br>
+              - 会优先挑更高分辨率的封面，并尝试去掉 CDN 缩放参数取原图。<br>
+              - 如果原图地址不可用，会自动退回原来的封面地址。
+            </p>
+          </article>
+
+          <article class="release">
             <div class="release-marker"></div>
             <div class="release-head">
               <strong>v0.2.12</strong>
@@ -558,7 +570,7 @@
 
     <footer>
       <div class="footer-mark">☾</div>
-      <div>MoonTrace v0.2.12 · Bilibili / Web / Telegram</div>
+      <div>MoonTrace v0.2.13 · Bilibili / Web / Telegram</div>
       <div class="footer-sub">TRACE NETWORK / LOCAL ARCHIVE TERMINAL</div>
     </footer>
   </main>

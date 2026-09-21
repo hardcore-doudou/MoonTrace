@@ -11,7 +11,7 @@ from core.parser import (
 )
 from core.subtitles import download_danmaku, download_subtitle
 from core.tasks import update_task
-from core.thumbnail import fetch_thumbnail
+from core.thumbnail import fetch_thumbnail, select_best_thumbnail
 
 
 def classify_stream(data: dict) -> str:
@@ -217,7 +217,7 @@ def download_cover(task_id, url, output_dir):
     update_task(task_id, status="processing")
 
     info = extract_media_info(url)
-    thumbnail = info.get("thumbnail")
+    thumbnail = select_best_thumbnail(info)
 
     if not thumbnail:
         raise RuntimeError("这个视频没有可用封面")
