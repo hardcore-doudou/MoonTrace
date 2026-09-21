@@ -38,6 +38,7 @@ MoonTrace 目前只启用了 Bilibili 支持。
 计划中的平台：
 
 ```text
+抖音     → 计划加入
 YouTube  → 计划加入
 TikTok   → 计划加入
 ```
