@@ -8,7 +8,7 @@ MoonTrace is a self-hosted media fetching tool.
 
 It currently focuses on **Bilibili** and provides both a Web UI and a Telegram Bot. A unified platform adapter layer is already in place for future support of platforms such as YouTube, TikTok, and Douyin.
 
-Current version: **v0.2.13**
+Current version: **v0.2.14**
 
 ---
 
@@ -44,6 +44,14 @@ TikTok   → Planned
 ```
 
 ---
+
+## v0.2.14
+
+This release changes Bilibili cover retrieval to prefer the official video-info API.
+
+- Read the submission cover from `data.pic` returned by Bilibili's video-info endpoint.
+- Remove CDN `@...` resize/crop suffixes before downloading when present.
+- Fall back to yt-dlp thumbnail metadata only when the official endpoint is unavailable.
 
 ## v0.2.13
 
@@ -526,5 +534,5 @@ See:
 Current version:
 
 ```text
-v0.2.13
+v0.2.14
 ```

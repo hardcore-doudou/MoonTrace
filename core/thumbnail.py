@@ -1,5 +1,10 @@
-from urllib.parse import urlparse
+import json
+import re
+from urllib.parse import urlencode, urlparse
 from urllib.request import Request, urlopen
+
+
+BVID_RE = re.compile(r"(BV[0-9A-Za-z]{10})", re.IGNORECASE)
 
 
 def validate_thumbnail_url(url: str) -> str:
@@ -39,6 +44,79 @@ def original_bilibili_thumbnail_url(url: str) -> str:
     return parsed._replace(path=original_path).geturl()
 
 
+def _extract_bvid(info: dict, source_url: str | None = None) -> str | None:
+    values = (
+        info.get("id"),
+        info.get("display_id"),
+        info.get("webpage_url"),
+        info.get("original_url"),
+        source_url,
+    )
+
+    for value in values:
+        if not isinstance(value, str):
+            continue
+
+        match = BVID_RE.search(value)
+        if match:
+            raw = match.group(1)
+            return "BV" + raw[2:]
+
+    return None
+
+
+def get_official_bilibili_thumbnail(
+    info: dict,
+    source_url: str | None = None,
+) -> str | None:
+    """
+    Get the actual Bilibili submission cover from the official video-info API.
+
+    The x/web-interface/view endpoint exposes data.pic, which is the video's
+    cover image rather than a page-sized preview thumbnail. If the API cannot
+    be reached, fall back to the thumbnail metadata provided by yt-dlp.
+    """
+    bvid = _extract_bvid(info, source_url)
+
+    if bvid:
+        api_url = (
+            "https://api.bilibili.com/x/web-interface/view?"
+            + urlencode({"bvid": bvid})
+        )
+
+        request = Request(
+            api_url,
+            headers={
+                "User-Agent": (
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 Chrome/130 Safari/537.36"
+                ),
+                "Referer": f"https://www.bilibili.com/video/{bvid}/",
+                "Accept": "application/json, text/plain, */*",
+            },
+        )
+
+        try:
+            with urlopen(request, timeout=15) as upstream:
+                payload = json.loads(
+                    upstream.read().decode("utf-8", errors="replace")
+                )
+
+            if payload.get("code") == 0:
+                data = payload.get("data") or {}
+                pic = data.get("pic")
+
+                if isinstance(pic, str) and pic:
+                    return original_bilibili_thumbnail_url(pic)
+
+        except Exception:
+            # Keep cover downloads usable if the API is temporarily blocked,
+            # rate-limited or unavailable.
+            pass
+
+    return select_best_thumbnail(info)
+
+
 def _thumbnail_score(item: dict) -> tuple[int, int, float, int]:
     width = item.get("width")
     height = item.get("height")
@@ -64,11 +142,8 @@ def _thumbnail_score(item: dict) -> tuple[int, int, float, int]:
 
 def select_best_thumbnail(info: dict) -> str | None:
     """
-    Pick the best thumbnail candidate exposed by yt-dlp.
-
-    Bilibili often exposes several thumbnail records. Prefer the candidate
-    with the largest known resolution, then remove any CDN resize suffix so
-    the downloader can request the original image.
+    Fallback thumbnail selection for cases where the Bilibili API cannot be
+    used. Prefer the largest candidate exposed by yt-dlp.
     """
     candidates: list[tuple[tuple[int, int, float, int], str]] = []
     seen: set[str] = set()
@@ -135,7 +210,7 @@ def fetch_thumbnail(url: str) -> tuple[bytes, str, str]:
     original_url = original_bilibili_thumbnail_url(supplied_url)
 
     # Prefer the original CDN image. If Bilibili refuses that URL for a
-    # particular item, fall back to the exact URL yt-dlp supplied.
+    # particular item, fall back to the exact URL supplied to us.
     urls = [original_url]
     if supplied_url != original_url:
         urls.append(supplied_url)

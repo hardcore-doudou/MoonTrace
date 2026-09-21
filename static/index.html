@@ -398,13 +398,25 @@
             <strong>MoonTrace 更新日志</strong>
           </div>
         </div>
-        <div class="changelog-current">CURRENT / v0.2.13</div>
+        <div class="changelog-current">CURRENT / v0.2.14</div>
         <span class="meta-toggle" aria-hidden="true">＋</span>
       </summary>
 
       <div class="meta-body changelog-body">
         <div class="timeline">
           <article class="release release-current">
+            <div class="release-marker"></div>
+            <div class="release-head">
+              <strong>v0.2.14</strong>
+            </div>
+            <p>
+              - 封面现在优先从 Bilibili 官方视频信息接口读取 data.pic。<br>
+              - 目标是保存 B 站投稿封面原图，而不是页面里的缩略图。<br>
+              - 官方接口不可用时才退回 yt-dlp 的封面地址。
+            </p>
+          </article>
+
+          <article class="release">
             <div class="release-marker"></div>
             <div class="release-head">
               <strong>v0.2.13</strong>
@@ -570,7 +582,7 @@
 
     <footer>
       <div class="footer-mark">☾</div>
-      <div>MoonTrace v0.2.13 · Bilibili / Web / Telegram</div>
+      <div>MoonTrace v0.2.14 · Bilibili / Web / Telegram</div>
       <div class="footer-sub">TRACE NETWORK / LOCAL ARCHIVE TERMINAL</div>
     </footer>
   </main>
