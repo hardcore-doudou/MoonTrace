@@ -63,7 +63,7 @@ def select_folder_windows(initial: str) -> str | None:
 
     try:
         selected = filedialog.askdirectory(
-            title="选择 BiliDownloader 保存位置",
+            title="选择 MoonTrace 保存位置",
             initialdir=initial if Path(initial).exists() else str(BASE_DIR),
             mustexist=False,
         )
