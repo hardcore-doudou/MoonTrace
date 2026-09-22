@@ -12,6 +12,129 @@ MoonTrace 是一个自托管媒体获取工具。
 
 ---
 
+## 🚀 快速开始
+
+MoonTrace 目前主要面向 **Windows**。
+
+### 1. 下载 MoonTrace
+
+如果不熟悉 Git，可以直接在 GitHub 项目页面点击：
+
+```text
+Code
+→ Download ZIP
+```
+
+下载后解压即可。
+
+如果使用 Git：
+
+```powershell
+git clone https://github.com/hardcore-doudou/MoonTrace.git
+cd MoonTrace
+```
+
+### 2. 安装 Python
+
+MoonTrace 需要：
+
+```text
+Python 3.10+
+```
+
+推荐使用 Python 3.13。
+
+在 Windows 安装 Python 时，建议勾选 **Add Python to PATH**。
+
+### 3. 首次安装
+
+进入 MoonTrace 文件夹，双击：
+
+```text
+setup.bat
+```
+
+安装脚本会自动：
+
+- 创建本地 Python 虚拟环境 `.venv`
+- 安装项目所需 Python 依赖
+- 检查 yt-dlp
+- 检查 FFmpeg
+- 如果电脑中没有可用的 FFmpeg，会自动下载一份到项目目录
+
+正常情况下不需要手动安装 FFmpeg，也不需要自行配置环境变量。
+
+### 4. 启动 MoonTrace
+
+双击：
+
+```text
+start.bat
+```
+
+然后在浏览器打开：
+
+```text
+http://127.0.0.1:8000
+```
+
+基本使用流程：
+
+```text
+粘贴 Bilibili 链接 / BV 号
+        ↓
+解析
+        ↓
+选择画质 / 音频 / 封面 / 字幕 / 弹幕
+        ↓
+下载
+```
+
+### 5. 高画质需要登录时
+
+先在支持的浏览器中登录 Bilibili，然后在 MoonTrace 中打开：
+
+```text
+下载设置
+→ Bilibili 登录态
+→ 选择浏览器
+```
+
+目前支持：
+
+```text
+Chrome
+Edge
+Firefox
+Brave
+```
+
+MoonTrace 只会在本机复用浏览器登录状态，不会把你的 Bilibili 密码保存进项目配置。
+
+### 可选：Telegram Bot
+
+如果只使用网页，可以跳过这一部分。
+
+首次配置 Telegram Bot 时运行：
+
+```text
+telegram_setup.bat
+```
+
+配置完成后启动：
+
+```text
+start_bot.bat
+```
+
+如果希望 Web 与 Telegram Bot 一起启动：
+
+```text
+start_all.bat
+```
+
+---
+
 ## 当前支持
 
 ### Bilibili

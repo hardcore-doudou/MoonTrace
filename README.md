@@ -12,6 +12,129 @@ Current version: **v0.2.13**
 
 ---
 
+## 🚀 Quick Start
+
+MoonTrace currently targets **Windows**.
+
+### 1. Download MoonTrace
+
+If you are not familiar with Git, open the repository page and use:
+
+```text
+Code
+→ Download ZIP
+```
+
+Then extract the ZIP.
+
+If you use Git:
+
+```powershell
+git clone https://github.com/hardcore-doudou/MoonTrace.git
+cd MoonTrace
+```
+
+### 2. Install Python
+
+MoonTrace requires:
+
+```text
+Python 3.10+
+```
+
+Python 3.13 is recommended.
+
+When installing Python on Windows, enable **Add Python to PATH**.
+
+### 3. Run the first-time setup
+
+Open the MoonTrace folder and double-click:
+
+```text
+setup.bat
+```
+
+The setup script will automatically:
+
+- Create the local Python virtual environment `.venv`
+- Install the required Python dependencies
+- Verify yt-dlp
+- Check for FFmpeg
+- Download a project-local FFmpeg build when FFmpeg is not already available
+
+In normal use, you do not need to install FFmpeg or configure environment variables manually.
+
+### 4. Start MoonTrace
+
+Double-click:
+
+```text
+start.bat
+```
+
+Then open:
+
+```text
+http://127.0.0.1:8000
+```
+
+Basic workflow:
+
+```text
+Paste a Bilibili URL / BV ID
+        ↓
+Parse
+        ↓
+Choose video quality / audio / thumbnail / subtitles / danmaku
+        ↓
+Download
+```
+
+### 5. If higher Bilibili qualities require login
+
+First log in to Bilibili in a supported browser, then open:
+
+```text
+Download Settings
+→ Bilibili Login Session
+→ Choose Browser
+```
+
+Supported browsers:
+
+```text
+Chrome
+Edge
+Firefox
+Brave
+```
+
+MoonTrace reuses the browser session locally. It does not store your Bilibili password in the project configuration.
+
+### Optional: Telegram Bot
+
+If you only need the Web UI, you can skip this section.
+
+For first-time Telegram Bot setup, run:
+
+```text
+telegram_setup.bat
+```
+
+Then start the Bot with:
+
+```text
+start_bot.bat
+```
+
+Or start both the Web UI and Telegram Bot with:
+
+```text
+start_all.bat
+```
+
+---
+
 ## Current Support
 
 ### Bilibili
