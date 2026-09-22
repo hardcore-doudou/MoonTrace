@@ -1,0 +1,38 @@
+/*
+ * MoonTrace local theme example
+ *
+ * Copy this file to:
+ *   user_data/theme/theme.css
+ *
+ * Optional background:
+ *   user_data/theme/background.png
+ *   user_data/theme/background.jpg
+ *   user_data/theme/background.jpeg
+ *   user_data/theme/background.webp
+ *
+ * user_data/ is ignored by Git.
+ */
+
+:root {
+  --text: #f7f9ff;
+  --muted: rgba(235, 241, 255, 0.72);
+  --muted-2: rgba(235, 241, 255, 0.52);
+  --border: rgba(255, 255, 255, 0.14);
+
+  --accent-a: #64a8ff;
+  --accent-b: #776bff;
+  --accent-c: #c576ff;
+}
+
+/* Example: make the readability overlay lighter or darker. */
+body::after {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(7, 17, 34, 0.16) 0%,
+      rgba(7, 17, 34, 0.28) 44%,
+      rgba(7, 17, 34, 0.46) 100%
+    );
+}
+
+/* You can override any normal MoonTrace CSS below this line. */

@@ -135,6 +135,49 @@ start_all.bat
 
 ---
 
+## 主题与本地自定义
+
+MoonTrace 的公开仓库不再内置第三方角色立绘、游戏 CG 或其他受版权保护的背景图片。
+
+默认界面使用 MoonTrace 自己的 CSS 月夜背景和原创界面装饰。
+
+个人主题可以只保存在本机，不提交到 Git。创建：
+
+```text
+user_data/
+└─ theme/
+   ├─ background.png   # 也支持 .jpg / .jpeg / .webp
+   └─ theme.css
+```
+
+只要放入名为 `background.png`、`background.jpg`、`background.jpeg` 或 `background.webp` 的图片，MoonTrace 就会自动把它作为网页背景。
+
+`theme.css` 会在内置样式之后加载，因此可以自行覆盖配色、透明度、字体、卡片样式、装饰元素以及其他 CSS。
+
+例如：
+
+```css
+:root {
+  --accent-a: #75b8ff;
+  --accent-b: #8572ff;
+  --accent-c: #d18aff;
+}
+
+body::after {
+  background: rgba(5, 10, 24, 0.36);
+}
+```
+
+整个 `user_data/` 目录都已经加入 Git 忽略规则，因此个人背景和主题文件只留在本机，在更新或提交仓库时不会被上传。
+
+可以从这个示例开始修改：
+
+```text
+themes/custom-theme.example.css
+```
+
+---
+
 ## 当前支持
 
 ### Bilibili

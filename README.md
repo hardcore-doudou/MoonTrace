@@ -135,6 +135,49 @@ start_all.bat
 
 ---
 
+## Themes and Local Customization
+
+The public MoonTrace repository does not bundle third-party character art, game CGs, or other copyrighted background artwork.
+
+The default appearance uses MoonTrace's own CSS-based moonlit background and interface decorations.
+
+Personal themes can be kept locally without being committed to Git. Create:
+
+```text
+user_data/
+└─ theme/
+   ├─ background.png   # or .jpg / .jpeg / .webp
+   └─ theme.css
+```
+
+A file named `background.png`, `background.jpg`, `background.jpeg`, or `background.webp` is used automatically as the page background.
+
+`theme.css` is loaded after the built-in stylesheet, so it can override colors, opacity, typography, card styles, decorations, or any other CSS.
+
+For example:
+
+```css
+:root {
+  --accent-a: #75b8ff;
+  --accent-b: #8572ff;
+  --accent-c: #d18aff;
+}
+
+body::after {
+  background: rgba(5, 10, 24, 0.36);
+}
+```
+
+The entire `user_data/` directory is ignored by Git, so personal artwork and theme settings stay on the local machine and are not uploaded when the repository is updated or pushed.
+
+A starter file is available at:
+
+```text
+themes/custom-theme.example.css
+```
+
+---
+
 ## Current Support
 
 ### Bilibili

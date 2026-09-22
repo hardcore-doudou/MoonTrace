@@ -35,17 +35,45 @@ body {
   background: transparent;
 }
 
-/* Dedicated fixed background layer for smooth scrolling. */
+/* Dedicated fixed background layer for smooth scrolling.
+   The public default uses only original CSS gradients.
+   A local background placed in user_data/theme/ is loaded automatically. */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background:
-    url("/static/images/moontrace-bg.png")
-    center center / cover
-    no-repeat;
+  background-image:
+    url("/api/theme-background"),
+    radial-gradient(
+      circle at 76% 18%,
+      rgba(214, 226, 255, 0.16) 0 1px,
+      transparent 2px
+    ),
+    radial-gradient(
+      circle at 72% 22%,
+      rgba(105, 145, 255, 0.14) 0,
+      rgba(105, 145, 255, 0.05) 14%,
+      transparent 31%
+    ),
+    linear-gradient(
+      145deg,
+      #09111f 0%,
+      #101c33 45%,
+      #17132b 100%
+    );
+  background-position:
+    center center,
+    center center,
+    center center,
+    center center;
+  background-size:
+    cover,
+    auto,
+    auto,
+    cover;
+  background-repeat: no-repeat;
   transform: translateZ(0);
   will-change: transform;
 }

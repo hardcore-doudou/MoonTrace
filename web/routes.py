@@ -73,9 +73,50 @@ def select_folder_windows(initial: str) -> str | None:
     return selected or None
 
 
+THEME_DIR = BASE_DIR / "user_data" / "theme"
+THEME_CSS_FILE = THEME_DIR / "theme.css"
+THEME_BACKGROUND_CANDIDATES = (
+    THEME_DIR / "background.png",
+    THEME_DIR / "background.jpg",
+    THEME_DIR / "background.jpeg",
+    THEME_DIR / "background.webp",
+)
+
+
 @router.get("/")
 def home():
     return FileResponse(STATIC_DIR / "index.html")
+
+
+@router.get("/api/theme.css")
+def local_theme_css():
+    if THEME_CSS_FILE.exists():
+        return FileResponse(
+            THEME_CSS_FILE,
+            media_type="text/css",
+            headers={"Cache-Control": "no-store"},
+        )
+
+    return Response(
+        content="",
+        media_type="text/css",
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+@router.get("/api/theme-background")
+def local_theme_background():
+    for path in THEME_BACKGROUND_CANDIDATES:
+        if path.exists() and path.is_file():
+            return FileResponse(
+                path,
+                headers={"Cache-Control": "no-store"},
+            )
+
+    raise HTTPException(
+        status_code=404,
+        detail="没有配置本地自定义背景",
+    )
 
 
 @router.get("/api/settings")

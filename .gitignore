@@ -6,3 +6,4 @@ settings.json
 downloads/*
 !downloads/.gitkeep
 tools/ffmpeg/
+user_data/
