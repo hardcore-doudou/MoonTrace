@@ -39,8 +39,8 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          & 'dist/MoonTrace/MoonTrace.exe' --self-test
-          if ($LASTEXITCODE -ne 0) { throw "EXE self-test failed: $LASTEXITCODE" }
+          $process = Start-Process -FilePath (Resolve-Path 'dist/MoonTrace/MoonTrace.exe') -ArgumentList '--self-test' -PassThru -Wait
+          if ($process.ExitCode -ne 0) { throw "EXE self-test failed: $($process.ExitCode)" }
           if (-not (Test-Path 'dist/MoonTrace/MoonTraceData/user_data/tasks.sqlite3')) { throw 'Portable SQLite location missing' }
           $zip = Get-ChildItem 'dist/MoonTrace-*-Windows-Portable.zip' | Select-Object -First 1
           if (-not $zip) { throw 'Portable ZIP missing' }
