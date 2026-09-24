@@ -21,6 +21,9 @@ def main() -> None:
     if "--self-test" in sys.argv:
         from core.ffmpeg import bundled_ffmpeg_available
         from core.tasks import task_counts
+        # Exercise the actual Windows GUI backend. Importing webview alone does
+        # not load pythonnet, so the previous smoke test missed startup errors.
+        import webview.platforms.winforms  # noqa: F401
 
         if not (STATIC_DIR / "index.html").is_file():
             raise RuntimeError("打包资源缺少 Web 页面")
