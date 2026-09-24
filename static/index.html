@@ -21,13 +21,15 @@
   </aside>
   <main class="container">
     <header class="app-topbar">
-      <span id="viewTitle">首页 / 媒体解析</span>
-      <span class="topbar-badge">☾ &nbsp; Bilibili · Web · Telegram</span>
+      <span class="topbar-identity"><span class="topbar-mark">☾</span><strong>MoonTrace</strong><small>便携测试版</small></span>
+      <span class="topbar-right"><span id="viewTitle">首页 / 媒体解析</span><span class="topbar-badge">LOCAL · BILIBILI</span></span>
     </header>
+    <div class="notice-strip" data-page="home">☾ &nbsp;欢迎来到 MoonTrace。贴入 Bilibili 视频地址，下载任务会自动保存在这台电脑。</div>
     <section class="hero ornamented" data-page="home">
+      <div class="hero-art" aria-hidden="true"><span class="art-halo"></span><span class="art-moon"></span><span class="art-ridge"></span></div>
       <div class="brand-row">
-        <div class="logo"><span class="logo-mark">◐</span> MoonTrace</div>
-        <div class="brand-code">MT / DESKTOP BETA</div>
+        <div class="logo"><span class="logo-mark">◐</span> MOONTRACE / DOWNLOAD</div>
+        <button class="hero-theme-shortcut" type="button" data-nav="settings">更换背景与主题 ↗</button>
       </div>
       <div class="moon-sigil" aria-hidden="true">
         <svg viewBox="0 0 120 120" role="presentation">
@@ -39,16 +41,16 @@
           <circle cx="60" cy="60" r="3" class="sigil-core"/>
         </svg>
       </div>
-      <div class="eyebrow">REMOTE MEDIA TRACE SYSTEM</div>
-      <h1>在月色下，收集每一道轨迹。</h1>
+      <div class="eyebrow">FOLLOW THE TRACE · SAVE THE MOMENT</div>
+      <h1>输入 B 站 AV/BV<br>或视频地址</h1>
       <div class="hero-rule"><span></span><b>MOONTRACE</b><span></span></div>
-      <p class="hero-description">自托管媒体获取工具。当前支持 Bilibili，未来将扩展 YouTube、TikTok 等平台。</p>
+      <p class="hero-description">粘贴链接或 BV 号，解析视频并选择你想保存的内容。</p>
 
       <form id="parseForm" class="search">
         <input id="urlInput" type="text" autocomplete="off"
-               placeholder="粘贴媒体链接或 BV 号"
+               placeholder="请在这里输入 B 站 AV/BV 号或视频地址…"
                required>
-        <button id="parseButton" type="submit">解析</button>
+        <button id="parseButton" type="submit">开始解析</button>
       </form>
 
       <p id="status" class="status"></p>

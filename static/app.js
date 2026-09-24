@@ -837,6 +837,7 @@ function currentTheme() {
 
 function previewTheme() {
   const theme = currentTheme();
+  document.body.classList.toggle("has-user-background", hasThemeBackground);
   $("#overlayValue").textContent = `${theme.overlay}%`;
   $("#panelOpacityValue").textContent = `${theme.panel_opacity}%`;
   const background = hasThemeBackground
