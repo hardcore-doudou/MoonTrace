@@ -8,7 +8,7 @@ MoonTrace is a self-hosted media fetching tool.
 
 It currently focuses on **Bilibili** and provides both a Web UI and a Telegram Bot. A unified platform adapter layer is already in place for future support of platforms such as YouTube, TikTok, and Douyin.
 
-Local beta version: **v0.3.0-beta.1**
+Local beta version: **v0.3.0-beta.2**
 
 For the optional Windows desktop window and release packaging, see [DESKTOP_TEST.md](DESKTOP_TEST.md). The Web and Telegram entry points continue to work.
 

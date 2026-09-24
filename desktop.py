@@ -3,9 +3,39 @@
 from __future__ import annotations
 
 import socket
+import os
+import shutil
+import subprocess
 import sys
 import threading
 import time
+from pathlib import Path
+
+
+def _find_edge() -> Path | None:
+    installed = shutil.which("msedge")
+    if installed:
+        return Path(installed)
+    for root in (os.environ.get("PROGRAMFILES(X86)"), os.environ.get("PROGRAMFILES"), os.environ.get("LOCALAPPDATA")):
+        if root:
+            candidate = Path(root) / "Microsoft" / "Edge" / "Application" / "msedge.exe"
+            if candidate.is_file():
+                return candidate
+    return None
+
+
+def _run_edge_app(url: str, data_dir: Path) -> None:
+    edge = _find_edge()
+    if edge is None:
+        raise RuntimeError("无法启动桌面窗口：未找到 Microsoft Edge")
+    profile = data_dir / "edge-profile"
+    profile.mkdir(parents=True, exist_ok=True)
+    process = subprocess.Popen([
+        str(edge), f"--app={url}", f"--user-data-dir={profile}",
+        "--no-first-run", "--no-default-browser-check",
+    ])
+    if process.wait() != 0:
+        raise RuntimeError("Microsoft Edge 窗口异常退出")
 
 
 def main() -> None:
@@ -24,6 +54,8 @@ def main() -> None:
         # Exercise the actual Windows GUI backend. Importing webview alone does
         # not load pythonnet, so the previous smoke test missed startup errors.
         import webview.platforms.winforms  # noqa: F401
+        if _find_edge() is None:
+            raise RuntimeError("缺少 Microsoft Edge 备用窗口")
 
         if not (STATIC_DIR / "index.html").is_file():
             raise RuntimeError("打包资源缺少 Web 页面")
@@ -65,7 +97,14 @@ def main() -> None:
         )
         # The browser profile stays outside the executable and survives updates.
         DATA_DIR.mkdir(parents=True, exist_ok=True)
-        webview.start(gui="edgechromium", storage_path=str(DATA_DIR / "webview"))
+        try:
+            webview.start(gui="edgechromium", storage_path=str(DATA_DIR / "webview"))
+        except RuntimeError as exc:
+            if "Failed to resolve Python.Runtime.Loader.Initialize" not in str(exc):
+                raise
+            # Some Windows installations reject pythonnet's bundled CLR DLL.
+            # Edge's --app mode keeps the same local UI without that dependency.
+            _run_edge_app(f"http://127.0.0.1:{port}/", DATA_DIR)
     finally:
         server.should_exit = True
         worker.join(timeout=5)

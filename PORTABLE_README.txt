@@ -11,5 +11,7 @@ MoonTrace Windows 便携版
    任务历史，在启动 Bot 前将 MOONTRACE_DATA_DIR 设为 MoonTraceData 的
    完整路径；Bot 的 .env 仍留在原项目目录。
 
-需要 Windows WebView2 Runtime。关闭桌面窗口时，进行中的下载会中断；
+需要 Windows WebView2 Runtime。如系统无法加载 .NET 视窗组件，程序会
+自动使用 Microsoft Edge 独立应用窗口（需系统安装 Edge）。
+关闭桌面窗口时，进行中的下载会中断；
 重启后可在下载页重新尝试失败的任务。

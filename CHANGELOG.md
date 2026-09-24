@@ -2,6 +2,12 @@
 
 这里记录 MoonTrace 从 v0.2.0 之后比较值得记的改动。
 
+## v0.3.0-beta.2（Windows 便携测试版）
+
+- Windows 打包后增加视窗后端导入验收，补上此前遗漏的 pythonnet 检查。
+- 遇到 Python.Runtime.Loader.Initialize 错误时，自动使用 Edge 独立应用窗口。
+- 便携数据保存在 EXE 旁的 MoonTraceData；暂用默认图标。
+
 ## v0.3.0-beta.1（预发布测试版）
 
 - 桌面入口：在 Windows 独立窗口中运行已有 Web 下载服务。

@@ -1,6 +1,6 @@
-# MoonTrace 桌面测试版（v0.3.0-beta.1）
+# MoonTrace 桌面测试版（v0.3.0-beta.2）
 
-这份 ZIP 是 **v0.3.0-beta.1 预发布版的源代码测试包**，不是已编译的 Windows EXE 或安装程序。
+本说明适用于 Windows 便携 EXE。早期的 v0.3.0-beta.1 源代码 ZIP 不含可执行程序。
 
 ## 在 Windows 11 本地试用
 
@@ -15,7 +15,9 @@
 
 ## 在 Windows 上生成免安装版
 
-运行 `build_windows.bat`，它会生成 `dist\MoonTrace\MoonTrace.exe` 和 `dist\MoonTrace-<VERSION>-Windows-Portable.zip`。图标暂用默认图标。ZIP 内含程序、FFmpeg 和便携标记，解压整个文件夹即可使用，不需另行安装 Python。生成前须安装 Python、桌面依赖以及 FFmpeg；脚本会检查并打包 FFmpeg 工具。Windows 可能需要 WebView2 Runtime。**尚未在 Windows 构建和验证**，不要把源代码测试 ZIP 当成可直接运行的 EXE。
+如果系统无法加载 pythonnet 的 .NET 视窗组件，桌面版会尝试使用 Microsoft Edge 的独立应用窗口打开本地界面。这个备用模式需要安装 Edge。Windows runner 的自检覆盖后端、资源、FFmpeg 与原生视窗组件导入；用户机器上的实际打开与下载仍需单独验收。
+
+运行 `build_windows.bat`，它会生成 `dist\MoonTrace\MoonTrace.exe` 和 `dist\MoonTrace-<VERSION>-Windows-Portable.zip`。图标暂用默认图标。ZIP 内含程序、FFmpeg 和便携标记，解压整个文件夹即可使用，不需另行安装 Python。生成前须安装 Python、桌面依赖以及 FFmpeg；脚本会检查并打包 FFmpeg 工具。Windows 可能需要 WebView2 Runtime。Windows runner 已做启动自检，但实际界面与下载仍需用户机器验收。
 
 便携版的 SQLite 历史、下载目录、设置文件和背景图位于 EXE 旁的 `MoonTraceData\`。更新时保留整个 `MoonTraceData\` 文件夹；从源代码版迁移时，可在退出程序后手动复制 `user_data/`、`downloads/` 及自己的 `settings.json` 到该目录；原文件不会被自动修改。若旧设置记录了原目录的下载路径，该路径仍需要存在。
 
