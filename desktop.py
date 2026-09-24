@@ -16,7 +16,19 @@ def main() -> None:
     import webview
 
     from app import app
-    from config import DATA_DIR
+    from config import DATA_DIR, STATIC_DIR
+
+    if "--self-test" in sys.argv:
+        from core.ffmpeg import bundled_ffmpeg_available
+        from core.tasks import task_counts
+
+        if not (STATIC_DIR / "index.html").is_file():
+            raise RuntimeError("打包资源缺少 Web 页面")
+        if not bundled_ffmpeg_available():
+            raise RuntimeError("打包资源缺少 FFmpeg")
+        task_counts()
+        print("MoonTrace portable self-test passed")
+        return
 
     # Bind before launching the server, so concurrent launches cannot pick the
     # same port. The HTTP API is reachable only from this computer.

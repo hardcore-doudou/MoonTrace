@@ -12,7 +12,13 @@ RESOURCE_DIR = Path(getattr(sys, "_MEIPASS", BASE_DIR))
 if os.environ.get("MOONTRACE_DATA_DIR"):
     DATA_DIR = Path(os.environ["MOONTRACE_DATA_DIR"]).expanduser().resolve()
 elif getattr(sys, "frozen", False):
-    DATA_DIR = Path(os.environ.get("LOCALAPPDATA") or Path.home()) / "MoonTrace"
+    # The portable release keeps its history and downloads beside the exe.
+    # Keep the older installed layout as a fallback for builds without the marker.
+    executable_dir = Path(sys.executable).resolve().parent
+    if (executable_dir / "moontrace.portable").is_file():
+        DATA_DIR = executable_dir / "MoonTraceData"
+    else:
+        DATA_DIR = Path(os.environ.get("LOCALAPPDATA") or Path.home()) / "MoonTrace"
 else:
     DATA_DIR = BASE_DIR
 STATIC_DIR = RESOURCE_DIR / "static"

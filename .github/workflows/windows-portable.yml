@@ -1,0 +1,52 @@
+name: Windows portable build
+
+on:
+  push:
+    branches: [portable-exe-build]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  portable:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        shell: pwsh
+        run: |
+          python -m venv .venv
+          .\.venv\Scripts\python.exe -m pip install -r requirements-build.txt
+      - name: Download FFmpeg
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $archive = Join-Path $env:RUNNER_TEMP 'ffmpeg.zip'
+          $extract = Join-Path $env:RUNNER_TEMP 'ffmpeg-extract'
+          Invoke-WebRequest 'https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip' -OutFile $archive
+          Expand-Archive $archive $extract
+          New-Item -ItemType Directory 'tools/ffmpeg/bin' -Force | Out-Null
+          Copy-Item (Get-ChildItem $extract -Recurse -Filter ffmpeg.exe | Select-Object -First 1).FullName 'tools/ffmpeg/bin/ffmpeg.exe'
+          Copy-Item (Get-ChildItem $extract -Recurse -Filter ffprobe.exe | Select-Object -First 1).FullName 'tools/ffmpeg/bin/ffprobe.exe'
+      - name: Build portable executable
+        shell: cmd
+        run: call build_windows.bat
+      - name: Test packaged executable and data path
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & 'dist/MoonTrace/MoonTrace.exe' --self-test
+          if ($LASTEXITCODE -ne 0) { throw "EXE self-test failed: $LASTEXITCODE" }
+          if (-not (Test-Path 'dist/MoonTrace/MoonTraceData/user_data/tasks.sqlite3')) { throw 'Portable SQLite location missing' }
+          $zip = Get-ChildItem 'dist/MoonTrace-*-Windows-Portable.zip' | Select-Object -First 1
+          if (-not $zip) { throw 'Portable ZIP missing' }
+          Write-Host "Portable ZIP: $($zip.FullName)"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MoonTrace-Windows-Portable
+          path: dist/MoonTrace-*-Windows-Portable.zip
+          if-no-files-found: error
