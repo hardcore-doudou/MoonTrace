@@ -8,7 +8,9 @@ MoonTrace 是一个自托管媒体获取工具。
 
 目前主要支持 **Bilibili**，提供 Web UI 与 Telegram Bot 两种使用方式，并已经为后续加入 YouTube、TikTok 等平台预留了统一的平台适配层。
 
-当前版本：**v0.2.13**
+本地测试版本：**v0.3.0-beta.1**
+
+桌面版试用与 Windows 打包说明见 [DESKTOP_TEST.md](DESKTOP_TEST.md)。原有 Web 与 Telegram 入口继续保留。
 
 ---
 

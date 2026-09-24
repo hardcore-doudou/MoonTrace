@@ -1,10 +1,10 @@
 from pathlib import Path
 import shutil
 
-from config import BASE_DIR
+from config import RESOURCE_DIR
 
 
-FFMPEG_BIN_DIR = BASE_DIR / "tools" / "ffmpeg" / "bin"
+FFMPEG_BIN_DIR = RESOURCE_DIR / "tools" / "ffmpeg" / "bin"
 FFMPEG_EXE = FFMPEG_BIN_DIR / "ffmpeg.exe"
 FFPROBE_EXE = FFMPEG_BIN_DIR / "ffprobe.exe"
 

@@ -24,8 +24,7 @@ from telegram.ext import (
     filters,
 )
 
-from config import BASE_DIR, load_settings, resolve_output_dir, settings_lock
-from core.downloader import download_worker
+from config import BASE_DIR, DATA_DIR, load_settings, resolve_output_dir, settings_lock
 from core.ffmpeg import find_ffmpeg
 from core.parser import (
     extract_media_info,
@@ -35,19 +34,21 @@ from core.parser import (
     normalize_media_url,
 )
 from core.platforms import detect_platform
-from core.tasks import create_task, get_task, update_task
+from core.queue import enqueue_download, start_queue
+from core.tasks import get_task, update_task
 
 
-ENV_FILE = BASE_DIR / ".env"
+# The optional shared desktop data directory does not move the user's existing
+# source .env. A copied app-data .env takes priority when available.
+ENV_FILE = DATA_DIR / ".env"
+if not ENV_FILE.exists() and DATA_DIR != BASE_DIR:
+    ENV_FILE = BASE_DIR / ".env"
 load_dotenv(ENV_FILE)
 
 TOKEN = (os.getenv("TELEGRAM_BOT_TOKEN") or "").strip()
 
 MAX_UPLOAD_MB = float(os.getenv("TELEGRAM_MAX_UPLOAD_MB") or "49")
 MAX_UPLOAD_BYTES = int(MAX_UPLOAD_MB * 1024 * 1024)
-
-# 下载任务同时最多跑 2 个，避免家里的机器一下被很多任务塞满。
-DOWNLOAD_SEMAPHORE = asyncio.Semaphore(2)
 
 # 解析后的临时会话：session_id -> data
 SESSIONS: dict[str, dict] = {}
@@ -210,6 +211,9 @@ def task_text(task: dict) -> str:
             f"❌ {title}失败\n\n"
             f"{task.get('error') or '未知错误'}"
         )
+
+    if status == "cancelled":
+        return f"⏹ {title}已取消"
 
     if status == "done":
         size = format_bytes(task.get("file_size"))
@@ -702,77 +706,69 @@ async def run_download_from_callback(
     quality_id: int | None = None,
     subtitle_lang: str | None = None,
 ) -> None:
-    async with DOWNLOAD_SEMAPHORE:
-        with settings_lock:
-            settings = load_settings()
+    with settings_lock:
+        settings = load_settings()
 
-        output_dir = resolve_output_dir(None)
-        fragments = int(settings.get("concurrent_fragments") or 4)
+    output_dir = resolve_output_dir(None)
+    fragments = int(settings.get("concurrent_fragments") or 4)
+    chosen_quality = next(
+        (item for item in session.get("qualities", [])
+         if item.get("quality_id") == quality_id and item.get("height") == height),
+        None,
+    ) if kind == "video" else None
 
-        task_id = create_task(
-            kind=kind,
-            height=height,
-            quality_id=quality_id,
-            subtitle_lang=subtitle_lang,
-            output_dir=str(output_dir),
-            source="telegram",
-            telegram_owner_user_id=query.from_user.id,
-            local_deleted=False,
-        )
+    task_id = enqueue_download(
+        title=(session["info"].get("title") or "待获取标题")[:300],
+        platform=detect_platform(session["url"]).key,
+        url=session["url"],
+        kind=kind,
+        height=height,
+        quality_id=quality_id,
+        quality_label=(chosen_quality or {}).get("label") if kind == "video" else None,
+        subtitle_lang=subtitle_lang,
+        output_dir=str(output_dir),
+        concurrent_fragments=fragments,
+        source="telegram",
+        telegram_owner_user_id=query.from_user.id,
+        local_deleted=False,
+    )
 
-        status_message = await query.message.reply_text(
-            "⏳ 下载任务已创建…"
-        )
+    status_message = await query.message.reply_text(
+        "⏳ 下载任务已创建…"
+    )
 
-        worker = asyncio.create_task(
-            asyncio.to_thread(
-                download_worker,
-                task_id,
-                session["url"],
-                kind,
-                height,
-                quality_id,
-                subtitle_lang,
-                output_dir,
-                fragments,
-            )
-        )
+    last_text = None
 
-        last_text = None
-
-        while not worker.done():
-            task = get_task(task_id)
-
-            if task:
-                text = task_text(task)
-
-                if text != last_text:
-                    await edit_progress_safely(status_message, text)
-                    last_text = text
-
-            # Telegram 单个聊天不宜过于频繁编辑消息。
-            await asyncio.sleep(1.5)
-
-        # 让线程异常真正传播出来（正常 download_worker 会自己写 error 状态）。
-        try:
-            await worker
-        except Exception:
-            pass
-
+    while True:
         task = get_task(task_id)
 
-        if not task:
-            await edit_progress_safely(
-                status_message,
-                "❌ 任务状态丢失",
-            )
-            return
+        if task:
+            text = task_text(task)
 
-        final_text = task_text(task)
-        await edit_progress_safely(status_message, final_text)
+            if text != last_text:
+                await edit_progress_safely(status_message, text)
+                last_text = text
 
-        if task.get("status") == "done":
-            await send_finished_file(query, task_id, task)
+            if task["status"] in ("done", "error", "cancelled"):
+                break
+
+        # Telegram 单个聊天不宜过于频繁编辑消息。
+        await asyncio.sleep(1.5)
+
+    task = get_task(task_id)
+
+    if not task:
+        await edit_progress_safely(
+            status_message,
+            "❌ 任务状态丢失",
+        )
+        return
+
+    final_text = task_text(task)
+    await edit_progress_safely(status_message, final_text)
+
+    if task.get("status") == "done":
+        await send_finished_file(query, task_id, task)
 
 
 async def handle_callback(
@@ -910,6 +906,8 @@ def main() -> None:
     app.add_handler(CommandHandler("help", command_help))
     app.add_handler(CommandHandler("whoami", command_whoami))
     app.add_handler(CommandHandler("status", command_status))
+
+    start_queue()
 
     app.add_handler(
         MessageHandler(

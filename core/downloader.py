@@ -1,3 +1,6 @@
+import time
+from threading import Lock
+
 import yt_dlp
 
 from core.cookies import apply_cookie_options
@@ -10,7 +13,7 @@ from core.parser import (
     unique_path,
 )
 from core.subtitles import download_danmaku, download_subtitle
-from core.tasks import update_task
+from core.tasks import update_progress, update_task
 from core.thumbnail import fetch_thumbnail, get_bilibili_standard_cover
 
 
@@ -29,52 +32,30 @@ def classify_stream(data: dict) -> str:
 
 
 def make_progress_hook(task_id: str):
+    last_update: dict[str, float] = {}
+    hook_lock = Lock()
+
     def hook(data: dict) -> None:
         status = data.get("status")
         stream = classify_stream(data)
-
-        from core.tasks import tasks, tasks_lock
-
-        with tasks_lock:
-            task = tasks.get(task_id)
-            if not task:
+        if status not in ("downloading", "finished"):
+            return
+        with hook_lock:
+            now = time.monotonic()
+            if status == "downloading" and now - last_update.get(stream, 0) < 0.4:
                 return
-
-            components = task.setdefault("components", {})
-            component = components.setdefault(stream, {})
-
-            if status == "downloading":
-                downloaded = data.get("downloaded_bytes") or 0
-                total = (
-                    data.get("total_bytes")
-                    or data.get("total_bytes_estimate")
-                    or 0
-                )
-
-                progress = None
-                if total:
-                    progress = round(downloaded / total * 100, 1)
-
-                component.update({
-                    "status": "downloading",
-                    "progress": progress,
-                    "downloaded_bytes": downloaded,
-                    "total_bytes": total or None,
-                    "speed": data.get("speed"),
-                    "eta": data.get("eta"),
-                })
-
-                task["status"] = "downloading"
-
-            elif status == "finished":
-                component.update({
-                    "status": "done",
-                    "progress": 100,
-                    "speed": None,
-                    "eta": None,
-                })
-
-                task["status"] = "processing"
+            last_update[stream] = now
+            if status == "finished":
+                update_progress(task_id, stream, "done")
+                return
+            downloaded = data.get("downloaded_bytes") or 0
+            total = data.get("total_bytes") or data.get("total_bytes_estimate") or 0
+            update_progress(
+                task_id, stream, "downloading",
+                progress=round(downloaded / total * 100, 1) if total else None,
+                downloaded_bytes=downloaded, total_bytes=total or None,
+                speed=data.get("speed"), eta=data.get("eta"),
+            )
 
     return hook
 
@@ -172,6 +153,8 @@ def download_video(
     update_task(
         task_id,
         status="done",
+        title=info.get("title") or title,
+        quality_label=quality_label,
         progress=100,
         filename=destination.name,
         filepath=str(destination),
@@ -233,6 +216,7 @@ def download_audio(task_id, url, output_dir, fragments):
     update_task(
         task_id,
         status="done",
+        title=info.get("title") or title,
         progress=100,
         filename=destination.name,
         filepath=str(destination),
@@ -265,6 +249,7 @@ def download_cover(task_id, url, output_dir):
     update_task(
         task_id,
         status="done",
+        title=info.get("title") or title,
         progress=100,
         filename=destination.name,
         filepath=str(destination),

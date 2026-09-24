@@ -400,6 +400,7 @@ async function startTask(kind, extra = {}) {
 
   const payload = {
     url: currentVideo.webpage_url,
+    title: currentVideo.title,
     kind,
     concurrent_fragments: Number(fragments.value),
     ...extra
@@ -424,6 +425,7 @@ async function startTask(kind, extra = {}) {
   }
 
   currentTaskId = data.task_id;
+  refreshTaskCenter();
   pollTask(currentTaskId);
 }
 
@@ -433,7 +435,8 @@ videoButton.addEventListener("click", () => {
 
   startTask("video", {
     height: selectedQuality.height,
-    quality_id: selectedQuality.quality_id ?? null
+    quality_id: selectedQuality.quality_id ?? null,
+    quality_label: selectedQuality.label || `${selectedQuality.height}P`
   });
 });
 
@@ -465,7 +468,8 @@ async function pollTask(taskId) {
       downloading: "下载中",
       processing: "处理中",
       done: "完成",
-      error: "失败"
+      error: "失败",
+      cancelled: "已取消"
     }[task.status] || task.status;
 
     if (task.kind === "video") {
@@ -515,12 +519,18 @@ async function pollTask(taskId) {
       return;
     }
 
+    if (task.status === "cancelled") {
+      taskDetails.textContent = "排队任务已取消";
+      return;
+    }
+
     pollTimer = setTimeout(() => pollTask(taskId), 900);
 
   } catch (error) {
     taskState.textContent = "状态读取失败";
     taskDetails.textContent = error.message;
   }
+
 }
 
 
@@ -602,3 +612,318 @@ form.addEventListener("submit", async (event) => {
 loadSettings().catch((error) => {
   statusText.textContent = `读取设置失败：${error.message}`;
 });
+
+
+// One history for the Web UI and Telegram Bot. The server performs all file actions.
+const taskList = $("#taskList");
+const managerMessage = $("#managerMessage");
+const pageLabel = $("#taskPageLabel");
+const pageSize = 20;
+let taskTab = "current";
+let taskPage = 0;
+let refreshSequence = 0;
+
+function taskStatusLabel(status) {
+  return {
+    queued: "排队中", starting: "准备中", downloading: "下载中",
+    processing: "处理中", done: "已完成", error: "失败", cancelled: "已取消"
+  }[status] || status;
+}
+
+function appendAction(parent, label, action) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.textContent = label;
+  button.addEventListener("click", action);
+  parent.appendChild(button);
+}
+
+async function taskOperation(path, method = "POST") {
+  const response = await fetch(path, { method });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.detail || "操作失败");
+  return data;
+}
+
+function runAction(callback) {
+  Promise.resolve().then(callback).then(() => refreshTaskCenter()).catch((error) => {
+    managerMessage.textContent = error.message;
+  });
+}
+
+function renderManagerTask(task) {
+  const item = document.createElement("article");
+  item.className = "manager-item";
+  const heading = document.createElement("div");
+  heading.className = "manager-item-head";
+  const title = document.createElement("strong");
+  title.textContent = task.title || task.filename || "未命名任务";
+  const state = document.createElement("span");
+  state.className = `manager-state ${task.status === "error" ? "is-error" : task.status === "done" ? "is-done" : ""}`;
+  state.textContent = taskStatusLabel(task.status);
+  heading.append(title, state);
+  item.appendChild(heading);
+
+  const meta = document.createElement("div");
+  meta.className = "manager-meta";
+  const kind = { video: "视频", audio: "音频", cover: "封面", subtitle: "字幕", danmaku: "弹幕" }[task.kind] || task.kind;
+  const created = task.created_at ? new Date(task.created_at).toLocaleString("zh-CN") : "";
+  const details = [task.platform || "Media", kind, task.quality_label || (task.height ? `${task.height}P` : ""),
+    task.source === "telegram" ? "Telegram" : "Web", created];
+  if (task.status === "done") {
+    details.push(task.file_size != null ? formatBytes(task.file_size) : "");
+  }
+  details.filter(Boolean).forEach((value) => {
+    const span = document.createElement("span");
+    span.textContent = value;
+    meta.appendChild(span);
+  });
+  item.appendChild(meta);
+
+  if (["starting", "downloading", "processing"].includes(task.status)) {
+    const track = document.createElement("div");
+    track.className = "progress-track";
+    const bar = document.createElement("div");
+    bar.className = "progress-bar";
+    bar.style.width = `${Math.max(0, Math.min(100, task.progress || 0))}%`;
+    track.appendChild(bar);
+    item.appendChild(track);
+    const telemetry = document.createElement("div");
+    telemetry.className = "manager-telemetry";
+    const speed = task.speed ? ` · ${formatBytes(task.speed)}/s` : "";
+    const eta = task.eta != null ? ` · 剩余约 ${Math.ceil(task.eta)} 秒` : "";
+    const componentDetail = task.kind === "video" && Object.keys(task.components || {}).length
+      ? ` · 视频 ${componentText(task.components.video)} / 音频 ${componentText(task.components.audio)}` : "";
+    telemetry.textContent = `${task.progress ?? 0}%${speed}${eta}${componentDetail}`;
+    if (task.status === "processing") telemetry.textContent += " · 正在处理文件";
+    item.appendChild(telemetry);
+  }
+
+  if (task.status === "error" && task.error) {
+    const error = document.createElement("p");
+    error.className = "manager-error";
+    error.textContent = task.error;
+    item.appendChild(error);
+  }
+  if (task.status === "done" && task.filepath) {
+    const path = document.createElement("p");
+    path.className = "manager-path";
+    path.textContent = task.filepath;
+    item.appendChild(path);
+  }
+
+  const actions = document.createElement("div");
+  actions.className = "manager-item-actions";
+  if (task.status === "done" && task.filepath) {
+    appendAction(actions, "打开文件", () => runAction(() => taskOperation(`/api/open-file/${task.id}`)));
+    appendAction(actions, "打开所在文件夹", () => runAction(() => taskOperation(`/api/open-folder/${task.id}`)));
+    const link = document.createElement("a");
+    link.href = `/api/files/${task.id}`;
+    link.textContent = "浏览器另存";
+    actions.appendChild(link);
+  }
+  if (task.status === "error") {
+    appendAction(actions, "重新下载", () => runAction(async () => {
+      await taskOperation(`/api/tasks/${task.id}/retry`);
+      selectTaskTab("current");
+    }));
+  }
+  if (task.status === "queued") {
+    appendAction(actions, "取消排队", () => runAction(() => taskOperation(`/api/tasks/${task.id}/cancel`)));
+  }
+  if (actions.childElementCount) item.appendChild(actions);
+  return item;
+}
+
+async function refreshTaskCenter() {
+  const sequence = ++refreshSequence;
+  const tab = taskTab;
+  const offset = taskPage * pageSize;
+  try {
+    const [listResponse, countsResponse] = await Promise.all([
+      fetch(`/api/tasks?status=${tab}&limit=${pageSize}&offset=${offset}`),
+      fetch("/api/tasks/summary")
+    ]);
+    if (!listResponse.ok || !countsResponse.ok) throw new Error("读取下载任务失败");
+    const [listing, counts] = await Promise.all([listResponse.json(), countsResponse.json()]);
+    if (sequence !== refreshSequence || tab !== taskTab) return;
+    const emptyText = {
+      current: "现在没有正在下载的任务。", queued: "队列是空的。",
+      done: "还没有完成的下载。", failed: "没有失败或取消的任务。"
+    };
+    taskList.replaceChildren(...(listing.items.length
+      ? listing.items.map(renderManagerTask)
+      : [Object.assign(document.createElement("p"), { className: "manager-message", textContent: emptyText[tab] })]));
+    ["current", "queued", "done", "failed"].forEach((name) => {
+      $(`#count${name[0].toUpperCase()}${name.slice(1)}`).textContent = String(counts[name] || 0);
+    });
+    const activeCount = (counts.current || 0) + (counts.queued || 0);
+    $("#sidebarActiveCount").textContent = String(activeCount);
+    $("#sidebarActiveCount").hidden = activeCount === 0;
+    pageLabel.textContent = listing.total ? `${taskPage + 1} / ${Math.ceil(listing.total / pageSize)}` : "0 / 0";
+    $("#previousTasks").disabled = taskPage === 0;
+    $("#nextTasks").disabled = offset + pageSize >= listing.total;
+    managerMessage.textContent = "";
+  } catch (error) {
+    if (sequence === refreshSequence) managerMessage.textContent = error.message;
+  }
+}
+
+function selectTaskTab(name) {
+  taskTab = name;
+  taskPage = 0;
+  document.querySelectorAll("[data-task-tab]").forEach((tab) => {
+    tab.setAttribute("aria-selected", String(tab.dataset.taskTab === name));
+  });
+  refreshTaskCenter();
+}
+
+document.querySelectorAll("[data-task-tab]").forEach((button) => {
+  button.addEventListener("click", () => selectTaskTab(button.dataset.taskTab));
+});
+$("#previousTasks").addEventListener("click", () => { taskPage--; refreshTaskCenter(); });
+$("#nextTasks").addEventListener("click", () => { taskPage++; refreshTaskCenter(); });
+$("#clearHistory").addEventListener("click", () => {
+  if (!confirm("清除已完成、失败和已取消的任务记录？已下载的文件不会删除。")) return;
+  runAction(async () => {
+    const result = await taskOperation("/api/tasks/history", "DELETE");
+    taskPage = 0;
+    managerMessage.textContent = `已清除 ${result.removed} 条记录`;
+  });
+});
+refreshTaskCenter();
+setInterval(refreshTaskCenter, 2000);
+
+const views = { home: "首页 / 媒体解析", downloads: "下载 / 任务中心", settings: "设置 / 个性化" };
+function navigate(view) {
+  if (!Object.hasOwn(views, view)) return;
+  document.body.dataset.view = view;
+  $("#viewTitle").textContent = views[view];
+  document.querySelectorAll("[data-nav]").forEach((button) => {
+    if (button.dataset.nav === view) button.setAttribute("aria-current", "page");
+    else button.removeAttribute("aria-current");
+  });
+  sessionStorage.setItem("moontrace-view", view);
+  if (view === "downloads") refreshTaskCenter();
+  window.scrollTo({ top: 0, behavior: "instant" });
+}
+document.querySelectorAll("[data-nav]").forEach((button) => {
+  button.addEventListener("click", () => navigate(button.dataset.nav));
+});
+navigate(sessionStorage.getItem("moontrace-view") || "home");
+
+const themePresets = {
+  moon: ["#64a8ff", "#776bff", "#c576ff", "#f7f9ff"],
+  aoko: ["#50d5ef", "#468fff", "#c0a8ff", "#f7fbff"],
+  ember: ["#ffc07c", "#ff808d", "#ce84e3", "#fff7f0"]
+};
+const themeFields = {
+  accent_a: $("#themeAccentA"), accent_b: $("#themeAccentB"),
+  accent_c: $("#themeAccentC"), text: $("#themeText"),
+  overlay: $("#themeOverlay"), panel_opacity: $("#themeOpacity")
+};
+let hasThemeBackground = false;
+let backgroundVersion = Date.now();
+
+function currentTheme() {
+  return {
+    preset: $("#themePreset").value,
+    accent_a: themeFields.accent_a.value, accent_b: themeFields.accent_b.value,
+    accent_c: themeFields.accent_c.value, text: themeFields.text.value,
+    overlay: Number(themeFields.overlay.value),
+    panel_opacity: Number(themeFields.panel_opacity.value)
+  };
+}
+
+function previewTheme() {
+  const theme = currentTheme();
+  $("#overlayValue").textContent = `${theme.overlay}%`;
+  $("#panelOpacityValue").textContent = `${theme.panel_opacity}%`;
+  const background = hasThemeBackground
+    ? `url("/api/theme-background?v=${backgroundVersion}")` : "none";
+  $("#themeVariables").textContent = `:root {
+    --accent-a: ${theme.accent_a}; --accent-b: ${theme.accent_b};
+    --accent-c: ${theme.accent_c}; --text: ${theme.text};
+    --theme-overlay: ${theme.overlay / 100};
+    --theme-panel-opacity: ${theme.panel_opacity / 100};
+    --theme-background-image: ${background};
+  }`;
+}
+
+function fillTheme(theme) {
+  $("#themePreset").value = theme.preset;
+  for (const [key, element] of Object.entries(themeFields)) element.value = theme[key];
+  hasThemeBackground = Boolean(theme.background);
+  previewTheme();
+}
+
+async function themeRequest(url, options) {
+  const response = await fetch(url, options);
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.detail || "主题操作失败");
+  return result;
+}
+
+function themeMessage(errorOrText) {
+  $("#themeMessage").textContent = errorOrText;
+}
+
+$("#themePreset").addEventListener("change", () => {
+  const preset = themePresets[$("#themePreset").value];
+  if (preset) {
+    ["accent_a", "accent_b", "accent_c", "text"].forEach((key, index) => {
+      themeFields[key].value = preset[index];
+    });
+  }
+  previewTheme();
+});
+for (const [key, element] of Object.entries(themeFields)) {
+  element.addEventListener("input", () => {
+    if (key !== "overlay" && key !== "panel_opacity") $("#themePreset").value = "custom";
+    previewTheme();
+  });
+}
+$("#themeReset").addEventListener("click", () => {
+  fillTheme({ preset: "moon", accent_a: "#64a8ff", accent_b: "#776bff",
+    accent_c: "#c576ff", text: "#f7f9ff", overlay: 36,
+    panel_opacity: 80, background: hasThemeBackground });
+  themeMessage("已预览月夜配色，点击「保存主题」后生效。背景图片保持不变。");
+});
+$("#saveTheme").addEventListener("click", async () => {
+  try {
+    await themeRequest("/api/theme", {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(currentTheme())
+    });
+    themeMessage("主题已保存到本机。");
+  } catch (error) { themeMessage(error.message); }
+});
+$("#backgroundUpload").addEventListener("change", async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  if (file.size > 12 * 1024 * 1024) {
+    themeMessage("背景图片不能超过 12 MB。");
+    event.target.value = "";
+    return;
+  }
+  try {
+    const result = await themeRequest("/api/theme/background", {
+      method: "POST", headers: { "Content-Type": file.type || "application/octet-stream" },
+      body: file
+    });
+    hasThemeBackground = result.background;
+    backgroundVersion = Date.now();
+    previewTheme();
+    themeMessage("背景图片已保存到本机。");
+  } catch (error) { themeMessage(error.message); }
+  event.target.value = "";
+});
+$("#removeBackground").addEventListener("click", async () => {
+  try {
+    await themeRequest("/api/theme/background", { method: "DELETE" });
+    hasThemeBackground = false;
+    previewTheme();
+    themeMessage("背景图片已移除，月夜渐变仍会显示。");
+  } catch (error) { themeMessage(error.message); }
+});
+themeRequest("/api/theme").then(fillTheme).catch((error) => themeMessage(error.message));

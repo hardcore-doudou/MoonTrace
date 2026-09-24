@@ -1,10 +1,10 @@
 from getpass import getpass
 from pathlib import Path
 
-from config import BASE_DIR
+from config import DATA_DIR
 
 
-ENV_FILE = BASE_DIR / ".env"
+ENV_FILE = DATA_DIR / ".env"
 
 
 def read_existing() -> dict[str, str]:

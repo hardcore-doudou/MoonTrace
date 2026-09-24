@@ -6,14 +6,28 @@
   <title>MoonTrace</title>
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/static/style.css">
+  <style id="themeVariables"></style>
   <link rel="stylesheet" href="/api/theme.css">
 </head>
-<body>
+<body data-view="home">
+  <aside class="app-sidebar" aria-label="主导航">
+    <div class="sidebar-brand"><span class="sidebar-emblem">◐</span><span>MoonTrace<small>LOCAL MEDIA MANAGER</small></span></div>
+    <nav class="sidebar-nav">
+      <button type="button" data-nav="home" aria-current="page"><span>☾</span> 首页</button>
+      <button type="button" data-nav="downloads"><span>↓</span> 下载 <b id="sidebarActiveCount" hidden>0</b></button>
+      <button type="button" data-nav="settings"><span>⚙</span> 设置</button>
+    </nav>
+    <div class="sidebar-footer">MOONTRACE / LOCAL BETA</div>
+  </aside>
   <main class="container">
-    <section class="hero ornamented">
+    <header class="app-topbar">
+      <span id="viewTitle">首页 / 媒体解析</span>
+      <span class="topbar-badge">☾ &nbsp; Bilibili · Web · Telegram</span>
+    </header>
+    <section class="hero ornamented" data-page="home">
       <div class="brand-row">
         <div class="logo"><span class="logo-mark">◐</span> MoonTrace</div>
-        <div class="brand-code">MT / 02.13</div>
+        <div class="brand-code">MT / DESKTOP BETA</div>
       </div>
       <div class="moon-sigil" aria-hidden="true">
         <svg viewBox="0 0 120 120" role="presentation">
@@ -26,7 +40,7 @@
         </svg>
       </div>
       <div class="eyebrow">REMOTE MEDIA TRACE SYSTEM</div>
-      <h1>Follow the trace beyond the moon.</h1>
+      <h1>在月色下，收集每一道轨迹。</h1>
       <div class="hero-rule"><span></span><b>MOONTRACE</b><span></span></div>
       <p class="hero-description">自托管媒体获取工具。当前支持 Bilibili，未来将扩展 YouTube、TikTok 等平台。</p>
 
@@ -41,7 +55,7 @@
     </section>
 
     
-    <details class="guide-card ornamented">
+    <details class="guide-card ornamented" data-page="home">
       <summary class="guide-summary">
         <div class="guide-summary-left">
           <span class="guide-moon">☾</span>
@@ -133,11 +147,11 @@
       </div>
     </details>
 
-    <section class="settings-card ornamented">
+    <section class="settings-card ornamented" data-page="settings">
       <div class="settings-title">
         <div>
           <strong>保存设置</strong>
-          <p>设置会保存到项目里的 settings.json。</p>
+          <p>设置只保存在运行 MoonTrace 的电脑上。</p>
         </div>
       </div>
 
@@ -199,7 +213,45 @@
       </div>
     </section>
 
-    <section id="result" class="card hidden ornamented">
+    <section class="theme-card ornamented" data-page="settings" aria-labelledby="themeTitle">
+      <div class="theme-heading">
+        <div>
+          <div class="manager-kicker">☾ &nbsp; APPEARANCE / LOCAL THEME</div>
+          <h2 id="themeTitle">外观与主题</h2>
+          <p>更换自己的背景和配色；图片只保存在本机。</p>
+        </div>
+        <button id="themeReset" class="theme-quiet" type="button">恢复月夜配色</button>
+      </div>
+      <div class="theme-preview" id="themePreview" aria-hidden="true">
+        <div class="theme-preview-panel"><strong>MoonTrace</strong><span>Follow the trace beyond the moon.</span></div>
+      </div>
+      <div class="theme-fields">
+        <div class="field">
+          <label for="themePreset">配色预设</label>
+          <select id="themePreset">
+            <option value="moon">月夜蓝紫</option>
+            <option value="aoko">青空蓝</option>
+            <option value="ember">暖月橘</option>
+            <option value="custom">自定义</option>
+          </select>
+        </div>
+        <label class="field theme-color-field">主色<input id="themeAccentA" type="color"></label>
+        <label class="field theme-color-field">辅色<input id="themeAccentB" type="color"></label>
+        <label class="field theme-color-field">高光<input id="themeAccentC" type="color"></label>
+        <label class="field theme-color-field">文字<input id="themeText" type="color"></label>
+        <label class="field theme-range">背景暗度 <span id="overlayValue"></span><input id="themeOverlay" type="range" min="0" max="80"></label>
+        <label class="field theme-range">面板不透明度 <span id="panelOpacityValue"></span><input id="themeOpacity" type="range" min="40" max="96"></label>
+      </div>
+      <div class="theme-actions">
+        <label for="backgroundUpload" class="theme-upload">选择本地背景图片</label>
+        <input id="backgroundUpload" type="file" accept="image/png,image/jpeg,image/webp" hidden>
+        <button id="removeBackground" type="button" class="theme-quiet">移除背景</button>
+        <button id="saveTheme" type="button" class="theme-save">保存主题</button>
+      </div>
+      <p id="themeMessage" role="status" class="theme-message"></p>
+    </section>
+
+    <section id="result" class="card hidden ornamented" data-page="home">
       <img id="thumbnail" class="thumbnail" alt="视频封面">
 
       <div class="info">
@@ -324,7 +376,31 @@
     </section>
 
 
-    <details class="meta-card legal-card ornamented">
+    <section class="manager-card ornamented" data-page="downloads" aria-labelledby="managerTitle">
+      <div class="manager-heading">
+        <div>
+          <div class="manager-kicker">☾  DOWNLOAD ARCHIVE / TASK CENTER</div>
+          <h2 id="managerTitle">下载任务中心</h2>
+          <p>Web 与 Telegram 共用记录；打开文件会在运行 MoonTrace 的电脑上执行。</p>
+        </div>
+        <button id="clearHistory" class="manager-clear" type="button">清除历史</button>
+      </div>
+      <div class="manager-tabs" role="tablist" aria-label="任务分类">
+        <button type="button" role="tab" data-task-tab="current" aria-selected="true">当前下载 <span id="countCurrent">0</span></button>
+        <button type="button" role="tab" data-task-tab="queued" aria-selected="false">排队任务 <span id="countQueued">0</span></button>
+        <button type="button" role="tab" data-task-tab="done" aria-selected="false">已完成 <span id="countDone">0</span></button>
+        <button type="button" role="tab" data-task-tab="failed" aria-selected="false">失败任务 <span id="countFailed">0</span></button>
+      </div>
+      <div id="taskList" class="manager-list" aria-live="polite"></div>
+      <p id="managerMessage" class="manager-message" role="status"></p>
+      <div class="manager-pages">
+        <button id="previousTasks" type="button">上一页</button>
+        <span id="taskPageLabel"></span>
+        <button id="nextTasks" type="button">下一页</button>
+      </div>
+    </section>
+
+    <details class="meta-card legal-card ornamented" data-page="settings">
       <summary class="meta-summary">
         <div class="meta-summary-left">
           <span class="meta-symbol">◇</span>
@@ -390,7 +466,7 @@
       </div>
     </details>
 
-    <details class="meta-card changelog-card ornamented">
+    <details class="meta-card changelog-card ornamented" data-page="settings">
       <summary class="meta-summary">
         <div class="meta-summary-left">
           <span class="meta-symbol">☾</span>
@@ -399,13 +475,18 @@
             <strong>MoonTrace 更新日志</strong>
           </div>
         </div>
-        <div class="changelog-current">CURRENT / v0.2.13</div>
+        <div class="changelog-current">CURRENT / v0.3.0 beta</div>
         <span class="meta-toggle" aria-hidden="true">＋</span>
       </summary>
 
       <div class="meta-body changelog-body">
         <div class="timeline">
           <article class="release release-current">
+            <div class="release-marker"></div>
+            <div class="release-head"><strong>v0.3.0 beta · 本地测试</strong></div>
+            <p>桌面入口、下载任务中心、侧边导航与图形化主题设置。</p>
+          </article>
+          <article class="release">
             <div class="release-marker"></div>
             <div class="release-head">
               <strong>v0.2.13</strong>
@@ -572,7 +653,7 @@
 
     <footer>
       <div class="footer-mark">☾</div>
-      <div>MoonTrace v0.2.13 · Bilibili / Web / Telegram</div>
+      <div>MoonTrace v0.3.0 beta · Bilibili / Desktop / Web / Telegram</div>
       <div class="footer-sub">TRACE NETWORK / LOCAL ARCHIVE TERMINAL</div>
     </footer>
   </main>

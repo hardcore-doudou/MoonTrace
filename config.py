@@ -1,14 +1,25 @@
 from pathlib import Path
 from threading import Lock
 import json
+import os
+import sys
 
 
 BASE_DIR = Path(__file__).resolve().parent
-STATIC_DIR = BASE_DIR / "static"
-DOWNLOAD_DIR = BASE_DIR / "downloads"
-SETTINGS_FILE = BASE_DIR / "settings.json"
+# Packaged files live in PyInstaller's read-only bundle; personal data must
+# survive upgrades and must never be written into that bundle.
+RESOURCE_DIR = Path(getattr(sys, "_MEIPASS", BASE_DIR))
+if os.environ.get("MOONTRACE_DATA_DIR"):
+    DATA_DIR = Path(os.environ["MOONTRACE_DATA_DIR"]).expanduser().resolve()
+elif getattr(sys, "frozen", False):
+    DATA_DIR = Path(os.environ.get("LOCALAPPDATA") or Path.home()) / "MoonTrace"
+else:
+    DATA_DIR = BASE_DIR
+STATIC_DIR = RESOURCE_DIR / "static"
+DOWNLOAD_DIR = DATA_DIR / "downloads"
+SETTINGS_FILE = DATA_DIR / "settings.json"
 
-DOWNLOAD_DIR.mkdir(exist_ok=True)
+DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 settings_lock = Lock()
 

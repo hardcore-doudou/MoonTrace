@@ -1,10 +1,12 @@
 from pathlib import Path
 from urllib.parse import quote
+import os
 import subprocess
+import sys
 import tkinter as tk
 from tkinter import filedialog
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
 
@@ -17,7 +19,7 @@ from config import (
     resolve_output_dir,
 )
 from core.cookies import SUPPORTED_COOKIE_BROWSERS
-from core.downloader import download_worker
+from core.queue import enqueue_download
 from core.ffmpeg import ffmpeg_available
 from core.parser import (
     normalize_media_url,
@@ -27,7 +29,16 @@ from core.parser import (
     has_danmaku,
 )
 from core.platforms import detect_platform
-from core.tasks import create_task, get_task
+from core.tasks import cancel_queued, clear_history, get_task, list_tasks, task_counts
+from core.theme import (
+    MAX_BACKGROUND_BYTES,
+    THEME_CSS_FILE,
+    background_path,
+    load_theme,
+    remove_background,
+    save_background,
+    save_theme,
+)
 from core.thumbnail import fetch_thumbnail, get_bilibili_standard_cover
 
 
@@ -41,6 +52,8 @@ class ParseRequest(BaseModel):
 class DownloadRequest(BaseModel):
     url: str
     kind: str
+    title: str | None = None
+    quality_label: str | None = None
     height: int | None = None
     quality_id: int | None = None
     subtitle_lang: str | None = None
@@ -54,6 +67,16 @@ class SettingsRequest(BaseModel):
     concurrent_fragments: int | None = None
     cookie_browser: str | None = None
     cookie_profile: str | None = None
+
+
+class ThemeRequest(BaseModel):
+    preset: str
+    accent_a: str
+    accent_b: str
+    accent_c: str
+    text: str
+    overlay: int
+    panel_opacity: int
 
 
 def select_folder_windows(initial: str) -> str | None:
@@ -71,16 +94,6 @@ def select_folder_windows(initial: str) -> str | None:
         root.destroy()
 
     return selected or None
-
-
-THEME_DIR = BASE_DIR / "user_data" / "theme"
-THEME_CSS_FILE = THEME_DIR / "theme.css"
-THEME_BACKGROUND_CANDIDATES = (
-    THEME_DIR / "background.png",
-    THEME_DIR / "background.jpg",
-    THEME_DIR / "background.jpeg",
-    THEME_DIR / "background.webp",
-)
 
 
 @router.get("/")
@@ -106,17 +119,45 @@ def local_theme_css():
 
 @router.get("/api/theme-background")
 def local_theme_background():
-    for path in THEME_BACKGROUND_CANDIDATES:
-        if path.exists() and path.is_file():
-            return FileResponse(
-                path,
-                headers={"Cache-Control": "no-store"},
-            )
+    path = background_path()
+    if path is not None:
+        return FileResponse(path, headers={"Cache-Control": "no-store"})
 
     raise HTTPException(
         status_code=404,
         detail="没有配置本地自定义背景",
     )
+
+
+@router.get("/api/theme")
+def get_theme():
+    return load_theme()
+
+
+@router.put("/api/theme")
+def put_theme(data: ThemeRequest):
+    try:
+        return save_theme(data.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/api/theme/background")
+async def put_theme_background(request: Request):
+    content = bytearray()
+    async for chunk in request.stream():
+        content.extend(chunk)
+        if len(content) > MAX_BACKGROUND_BYTES:
+            raise HTTPException(status_code=413, detail="背景图片不能超过 12 MB")
+    try:
+        return save_background(bytes(content))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.delete("/api/theme/background")
+def delete_theme_background():
+    return remove_background()
 
 
 @router.get("/api/settings")
@@ -258,7 +299,6 @@ def parse_video(data: ParseRequest):
 @router.post("/api/download")
 def start_download(
     data: DownloadRequest,
-    background_tasks: BackgroundTasks,
 ):
     if (
         data.kind in ("video", "audio", "subtitle")
@@ -316,27 +356,75 @@ def start_download(
             detail=str(exc),
         ) from exc
 
-    task_id = create_task(
+    platform = detect_platform(url)
+    task_id = enqueue_download(
+        title=(data.title or "待获取标题")[:300],
+        platform=platform.key,
+        url=url,
         kind=data.kind,
         height=data.height,
         quality_id=data.quality_id,
+        quality_label=(data.quality_label or "")[:60] or None,
         subtitle_lang=data.subtitle_lang,
         output_dir=str(output_dir),
-    )
-
-    background_tasks.add_task(
-        download_worker,
-        task_id,
-        url,
-        data.kind,
-        data.height,
-        data.quality_id,
-        data.subtitle_lang,
-        output_dir,
-        data.concurrent_fragments,
+        concurrent_fragments=data.concurrent_fragments,
+        source="web",
     )
 
     return {"task_id": task_id}
+
+
+@router.get("/api/tasks")
+def task_history(
+    status: str = "current",
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+):
+    try:
+        return list_tasks(status, limit, offset)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.delete("/api/tasks/history")
+def delete_task_history():
+    return {"removed": clear_history()}
+
+
+@router.get("/api/tasks/summary")
+def task_summary():
+    return task_counts()
+
+
+@router.post("/api/tasks/{task_id}/cancel")
+def cancel_task(task_id: str):
+    if not get_task(task_id):
+        raise HTTPException(status_code=404, detail="任务不存在")
+    if not cancel_queued(task_id):
+        raise HTTPException(status_code=409, detail="只能取消尚未开始的排队任务")
+    return get_task(task_id)
+
+
+@router.post("/api/tasks/{task_id}/retry")
+def retry_task(task_id: str):
+    old = get_task(task_id)
+    if not old:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    if old["status"] != "error":
+        raise HTTPException(status_code=409, detail="只能重新下载失败任务")
+    try:
+        output_dir = resolve_output_dir(old["output_dir"])
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"保存目录不可用：{exc}") from exc
+    new_id = enqueue_download(
+        title=old["title"], platform=old["platform"], url=old["url"],
+        kind=old["kind"], height=old["height"], quality_id=old["quality_id"],
+        quality_label=old["quality_label"], subtitle_lang=old["subtitle_lang"],
+        output_dir=str(output_dir),
+        concurrent_fragments=old["concurrent_fragments"],
+        source="web", retry_of=task_id,
+    )
+    return {"task_id": new_id}
 
 
 @router.get("/api/tasks/{task_id}")
@@ -387,24 +475,39 @@ def get_downloaded_file(task_id: str):
 
 @router.post("/api/open-folder/{task_id}")
 def open_folder(task_id: str):
-    task = get_task(task_id)
-
-    if not task or not task.get("filepath"):
-        raise HTTPException(
-            status_code=404,
-            detail="任务文件不存在",
-        )
-
-    path = Path(task["filepath"]).resolve()
-
-    if not path.exists():
-        raise HTTPException(
-            status_code=404,
-            detail="文件不存在",
-        )
-
-    subprocess.Popen(
-        ["explorer.exe", "/select,", str(path)]
-    )
+    path = _ready_file(task_id)
+    try:
+        if sys.platform == "win32":
+            subprocess.Popen(["explorer.exe", "/select,", str(path)])
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", "-R", str(path)])
+        else:
+            subprocess.Popen(["xdg-open", str(path.parent)])
+    except OSError as exc:
+        raise HTTPException(status_code=500, detail=f"无法打开文件夹：{exc}") from exc
 
     return {"ok": True}
+
+
+@router.post("/api/open-file/{task_id}")
+def open_file(task_id: str):
+    path = _ready_file(task_id)
+    try:
+        if sys.platform == "win32":
+            os.startfile(str(path))
+        else:
+            subprocess.Popen(["open" if sys.platform == "darwin" else "xdg-open", str(path)])
+    except OSError as exc:
+        raise HTTPException(status_code=500, detail=f"无法打开文件：{exc}") from exc
+
+    return {"ok": True}
+
+
+def _ready_file(task_id: str) -> Path:
+    task = get_task(task_id)
+    if not task or task["status"] != "done" or not task.get("filepath"):
+        raise HTTPException(status_code=404, detail="任务文件不存在")
+    path = Path(task["filepath"]).resolve()
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="文件不存在")
+    return path

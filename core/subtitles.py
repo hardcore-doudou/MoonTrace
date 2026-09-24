@@ -65,6 +65,7 @@ def download_subtitle(task_id, url, lang, output_dir):
     update_task(
         task_id,
         status="done",
+        title=info.get("title") or title,
         progress=100,
         filename=destination.name,
         filepath=str(destination),
@@ -127,6 +128,7 @@ def download_danmaku(task_id, url, output_dir):
     update_task(
         task_id,
         status="done",
+        title=info.get("title") or title,
         progress=100,
         filename=destination.name,
         filepath=str(destination),

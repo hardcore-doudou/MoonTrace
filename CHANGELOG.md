@@ -2,6 +2,14 @@
 
 这里记录 MoonTrace 从 v0.2.0 之后比较值得记的改动。
 
+## v0.3.0-beta.1（预发布测试版）
+
+- 桌面入口：在 Windows 独立窗口中运行已有 Web 下载服务。
+- SQLite 任务中心支持下载队列、持久化历史、失败重试；Web 与 Telegram 共用。
+- Web 变成首页、下载、设置三个页面；增加可视化主题设置与本地背景上传。
+- 打包后私人配置、主题和下载历史保存到 `%LOCALAPPDATA%\MoonTrace`。
+- 提供 Windows 打包脚本；正式安装包仍需在 Windows 上构建及验证。
+
 ## v0.2.13
 
 - Web 与 Telegram 的视频画质选择现在会传递 Bilibili `quality_id`，可区分相同分辨率下的 1080P、1080P+ 等不同画质档位。
